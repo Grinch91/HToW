@@ -24,20 +24,16 @@ public class Game : MonoBehaviour {
 	public Texture btn;
 	bool aiDeckEmpty;
 	bool playerDeckEmpty;
-	bool justChanged;
-	bool playerTurnOver;
-	bool buttonPushed = false;
 
-	public float timer = 0.0f;
-	public float timerMax = 5.0f;
-	public float messageTimer = 0.0f;
+	[Tooltip("Seconds the AI pauses before acting, so the player can follow what it does.")]
+	public float aiThinkSeconds = 1.5f;
+
+	[Tooltip("Seconds a win/lose message stays on screen before returning to the main menu.")]
+	public float endGameMessageSeconds = 5.0f;
 
 	public float tempX = 2.0f;
 	public float tempY = 3.0f;
-	public int n;
 	public int i = 0;
-	public int seperatingCardsAI = -7;
-	public int seperatingCardsPlayer = -7;
 	public List<CardDef> userlist = new List<CardDef>();
 	public List<CardDef> enemylist = new List<CardDef>();
 
@@ -48,32 +44,18 @@ public class Game : MonoBehaviour {
 
 	string playerFile;
 	string enemyFile;
-
-	const float FlyTime = 0.5f;
-
-	bool playerFirst = true;
 	#endregion
 
 
-	//GameState
+	//Turn state
 	#region
 
-	enum GameState
-	{
-		Initial,
-		Begin,
-		Pending,
-		Resolved,
-		PlayerTurn,
-		AITurn,
-		Pause,
-		PlayerWin,
-		AIWin
-	};
+	// Owns turn order and phase. See Assets/Scripts/Battle/TurnController.cs.
+	readonly TurnController turns = new TurnController();
 
-	GameState m_state;
-
-	GameObject [] Buttons;
+	bool matchStarted;
+	float aiThinkTimer;
+	float endGameTimer;
 	#endregion
 
 
@@ -92,49 +74,41 @@ public class Game : MonoBehaviour {
 		//deckInstance.Initialize();
 		playerDeck.Initialize();
 		aiDeck.Initialize();
-		//For testing purposes
-		playerInstance.playerMorale = 1;
-		enemyInstance.enemyMorale = 1;
+		// Morale was previously forced to 1 here "for testing purposes", which meant a
+		// single card death ended the match. Left alone for now: the starting values come
+		// from BaseCharacter and are corrected in Milestone 3 along with the HUD.
 		PlayerWins = this.transform.Find("MessagePlayerWin").gameObject;
 		PlayerTurn = this.transform.Find("MessagePlayerTurn").gameObject;
 		AIWins = this.transform.Find("MessageAIWin").gameObject;
 		AITurn = this.transform.Find("MessageAITurn").gameObject;
-		PlayerWins.SetActive(false);
-		PlayerTurn.SetActive(false);
-		AIWins.SetActive(false);
-		AITurn.SetActive(false);
-		Buttons =  new GameObject[1];
-		Buttons[0] = this.transform.Find("Button1").gameObject;
-		m_state = GameState.PlayerTurn;
-		Debug.Log ("Building Player deck");
-		BuildDeck(playerFile);
-		m_state = GameState.AITurn;
-		Debug.Log ("Building Enemy deck");
-		BuildDeck(enemyFile);
-		m_state = GameState.Initial;
-		Debug.Log("Player Supply is");
-		Debug.Log (playerInstance.playerSupply);
+		HideAllMessages();
 
+		turns.TurnStarted += OnTurnStarted;
+		turns.TurnEnded += OnTurnEnded;
+
+		Debug.Log ("Building Player deck");
+		BuildDeck(playerDeck, playerFile);
+		Debug.Log ("Building Enemy deck");
+		BuildDeck(aiDeck, enemyFile);
+	}
+
+	void OnDestroy()
+	{
+		turns.TurnStarted -= OnTurnStarted;
+		turns.TurnEnded -= OnTurnEnded;
 	}
 	#endregion
 
 
 	//BuildDeck Function
 	#region
-	void BuildDeck(string file)
+	// Previously took only a file name and used m_state to decide which deck to fill,
+	// using the state machine as an argument-passing channel. Now the target is explicit.
+	void BuildDeck(Deck deck, string file)
 	{
-		if(m_state == GameState.PlayerTurn)
-		{
-			playerDeck.ClearDeck();
-			playerDeck.Load(file);
-			playerDeck.Shuffle();
-		}
-		else if(m_state == GameState.AITurn)
-		{
-			aiDeck.ClearDeck();
-			aiDeck.Load(file);
-			aiDeck.Shuffle();
-		}
+		deck.ClearDeck();
+		deck.Load(file);
+		deck.Shuffle();
 	}
 	#endregion
 
@@ -143,59 +117,45 @@ public class Game : MonoBehaviour {
 	#region
 
 	//Displays message objects depending on certain requirments.
-	//Used to trigger messages for user
-	void ShowMessage(string msg)
+	// Exactly one message object is visible at a time, so every path goes through here.
+	// The old ShowMessage() took a magic string, mixed display with scene loading, and
+	// incremented messageTimer while resetting a different field (`timer`) — so its
+	// timeout never actually elapsed. Display and timing are now separate concerns.
+	void HideAllMessages()
 	{
-		messageTimer += Time.deltaTime;
-		if (msg == "AI wins")
-		{
-			PlayerWins.SetActive(false);
-			PlayerTurn.SetActive(false);
-			AIWins.SetActive(true);
-			AITurn.SetActive(false);
-			if(messageTimer >= timerMax)
-			{
-				SceneManager.LoadScene("MainMenu");
-			}
-			timer=0.0f;
-		}		
-		else if (msg == "AI Turn")
-		{
-			PlayerWins.SetActive(false);
-			PlayerTurn.SetActive(false);
-			AIWins.SetActive(false);
-			AITurn.SetActive(true);
-		}
-		else if (msg == "Player wins")
-		{
-			PlayerWins.SetActive(true);
-			PlayerTurn.SetActive(false);
-			AIWins.SetActive(false);
-			AITurn.SetActive(false);
-			if(messageTimer >= timerMax)
-			{
-				SceneManager.LoadScene("MainMenu");
-			}
-			timer=0.0f;
-		}
-		else if (msg == "Player Turn")
-		{
-			PlayerWins.SetActive(false);
-			PlayerTurn.SetActive(true);
-			AIWins.SetActive(false);
-			AITurn.SetActive(false);
-		}
+		PlayerWins.SetActive(false);
+		PlayerTurn.SetActive(false);
+		AIWins.SetActive(false);
+		AITurn.SetActive(false);
+	}
+
+	void ShowOnly(GameObject message)
+	{
+		HideAllMessages();
+		message.SetActive(true);
+	}
+
+	// The turn banners existed in the scene from the start but were only ever hidden,
+	// never shown: ShowMessage's only caller passed win/lose strings. The player got no
+	// turn feedback at all. See Docs/KnownBugs.md M6.
+	void ShowTurnMessage(Side side)
+	{
+		ShowOnly(side == Side.Player ? PlayerTurn : AITurn);
 	}
 
 	public void OnButton(string message)
 	{
-		Debug.Log("Test:" + message);
 		switch(message)
 		{
 		case "EndTurn":
-			Debug.Log ("You have pushed the button");
-			buttonPushed = true;
-			break;	
+			// The button previously set a `buttonPushed` field that nothing ever read,
+			// so End Turn did nothing at all. See Docs/KnownBugs.md C3.
+			if(turns.ActiveSide == Side.Player && turns.Phase == TurnPhase.Main)
+			{
+				Debug.Log("Player ended their turn");
+				turns.RequestEndTurn();
+			}
+			break;
 
 		}
 
@@ -352,88 +312,105 @@ public class Game : MonoBehaviour {
 
 	//Battle() and Attack()
 	#region
-	void Battle()
+	void Battle(Side attackingSide)
 	{
 		//temp variables used to store attacker/target
 		CardDef attacker = new CardDef("null",0,0,0,0,"null");
 		CardDef target = new CardDef("null",0,0,0,0,"null");
-		
+
 		//find attacker/target
-		attacker = AttackingCard(attacker);
-		target = TargetCard(target, attacker);
-		Debug.Log ("display target/attacker names");
-		Debug.Log (target.Name);
-		Debug.Log (attacker.Name);
+		attacker = AttackingCard(attacker, attackingSide);
+		target = TargetCard(target, attacker, attackingSide);
 		if(attacker.Name != "null" && target.Name != "null")
 		{
-			Debug.Log ("Entering attack: " +attacker.Name +"is attacking "+target.Name);
-			Attack(attacker,target);
+			Debug.Log ("Entering attack: " +attacker.Name +" is attacking "+target.Name);
+			Attack(attacker,target,attackingSide);
 		}
 	}
 
 	//Method for selecting the attackingCard
-	public CardDef AttackingCard(CardDef selectAttacker)
+	public CardDef AttackingCard(CardDef selectAttacker, Side attackingSide)
 	{
 		//If AI scans through every card in the active area selecting the best choice
-		if(m_state == GameState.AITurn)
+		if(attackingSide == Side.AI)
 		{
 			foreach(CardDef card in aiActive.deck)
 			{
 				if(card.Dmg > selectAttacker.Dmg)
 				{
 					selectAttacker = card;
-					Debug.Log ("SelectedCard Name for enemy attack is "+selectAttacker.Name);
 				}
 			}
 		}
 		//if player select attacker is set to be which ever card selected
-		if(m_state == GameState.PlayerTurn && playerActive.GetComponent<BattleController>().attacker != null)
+		if(attackingSide == Side.Player)
 		{
-			selectAttacker = playerActive.GetComponent<BattleController>().attacker;
+			BattleController selection = PlayerSelection();
+			if(selection != null && selection.attacker != null)
+			{
+				selectAttacker = selection.attacker;
+			}
 		}
-		
+
 		return selectAttacker;
 	}
-	
+
 	//Method for selecting the TargetCard
-	public CardDef TargetCard(CardDef selectTarget, CardDef attacker)
+	public CardDef TargetCard(CardDef selectTarget, CardDef attacker, Side attackingSide)
 	{
 		//If AI scans through every card in the active area selecting the best choice
-		if(m_state == GameState.AITurn)
+		if(attackingSide == Side.AI)
 		{
 			foreach(CardDef card in playerActive.deck)
 			{
 				if(card.Hp < attacker.Dmg)
 				{
 					selectTarget = card;
-					Debug.Log("Enemy's target card is "+selectTarget.Name);
 				}
 				if(card.Hp > attacker.Dmg && card.Dmg > attacker.Dmg)
 				{
 					selectTarget = card;
-					Debug.Log("Enemy's target card is "+selectTarget.Name);
 				}
 			}
 		}
 		//if player select attacker is set to be which ever card selected
-		if(m_state == GameState.PlayerTurn && playerActive.GetComponent<BattleController>().target != null)
+		if(attackingSide == Side.Player)
 		{
-			selectTarget = playerActive.GetComponent<BattleController>().target;
+			BattleController selection = PlayerSelection();
+			if(selection != null && selection.target != null)
+			{
+				selectTarget = selection.target;
+			}
 		}
 		return selectTarget;
 	}
 
+	// STOPGAP for Milestone 1 only. The original code called
+	// playerActive.GetComponent<BattleController>() and dereferenced the result
+	// directly. No BattleController is attached to the Active-Player object — the
+	// component only ever exists on individual card objects, which are its *children* —
+	// so this threw a NullReferenceException on the very first attack. That crash is
+	// visible in the recorded 2014 log. See Docs/KnownBugs.md C1.
+	//
+	// Returning null instead of throwing lets the turn system be observed and verified.
+	// It does NOT fix selection: the player still cannot choose an attacker or target,
+	// so player attacks simply do not resolve. The real fix is a proper selection
+	// service in Milestone 2, which is also where card identity stops being a string.
+	BattleController PlayerSelection()
+	{
+		return playerActive.GetComponent<BattleController>();
+	}
+
 	//Attack method, takes the attacker and target variables
-	void Attack(CardDef attacker,CardDef target)
+	void Attack(CardDef attacker,CardDef target,Side attackingSide)
 	{
 		//Reduces target health by the damage of the attacker, then checks if health is less than or is 0
 		target.Hp = target.Hp - attacker.Dmg;
 		if(target.Hp <=0)
 		{
 			//If AI destroys player card, removing it and reduces their morale.
-			if(m_state == GameState.AITurn)
+			if(attackingSide == Side.AI)
 			{
-				Debug.Log(target.Hp);
 				playerInstance.playerMorale = playerInstance.playerMorale - target.MoraleCost;
 				foreach(CardDef card in playerActive.deck)
 				{
@@ -446,7 +423,7 @@ public class Game : MonoBehaviour {
 				}
 			}
 			//If player destroys AI card, removing it and reduces their morale.
-			if(m_state == GameState.PlayerTurn)
+			if(attackingSide == Side.Player)
 			{
 				enemyInstance.enemyMorale = enemyInstance.enemyMorale - target.MoraleCost;
 				foreach(CardDef card in aiActive.deck)
@@ -487,7 +464,6 @@ public class Game : MonoBehaviour {
 			newObj.transform.parent = playerActive.transform;
 			string store =  newCard.Data.Front;
 			Sprite mySprite = Resources.Load<Sprite>(store)as Sprite;
-			seperatingCardsPlayer = seperatingCardsPlayer+3;
 			float x = -10+(playerDeck.deck.Count)*2.0f;
 			float y = -3.0f;
 			ren.sprite = mySprite;
@@ -520,7 +496,6 @@ public class Game : MonoBehaviour {
 			newObj.transform.parent = aiActive.transform;
 			string store = newCard.Data.Front;
 			Sprite mySprite = Resources.Load<Sprite>(store)as Sprite;
-			seperatingCardsAI = seperatingCardsAI+3;
 			float x = -10+(aiDeck.deck.Count)*2.0f;
 			float y = 3.0f;
 			ren.sprite = mySprite;
@@ -607,266 +582,199 @@ public class Game : MonoBehaviour {
 	#endregion
 
 
-	//Turn related functions EnemyTurn(), UserTurn() Pending and Resolved
+	//Turn phase handlers
 	#region
-	//Extra precaution
-	void EnemyTurn()
+
+	// Start of turn: draw, gain supply, and refresh units so they may attack again.
+	void OnTurnStarted(Side side)
 	{
-		Debug.Log ("What is playerTurnOver currently at when entering enemy turn");
-		Debug.Log (playerTurnOver);
-		
-		n = 0;
-		Debug.Log("In enemy turn");
-		//sets a timer so the turn is not completed instantly and the player can see what happens
-		CheckIsDeckEmpty();
-		timer += Time.deltaTime;
-		if(timer >= timerMax)
+		Debug.Log("Turn " + turns.TurnNumber + " - " + side + " to act");
+		ShowTurnMessage(side);
+		DrawForTurn(side);
+		GainSupply(side);
+		RefreshUnits(side);
+		aiThinkTimer = 0.0f;
+	}
+
+	// End of turn: the active side's units attack, then control passes over.
+	void OnTurnEnded(Side side)
+	{
+		ResolveAttacks(side);
+		CheckForWinner();
+	}
+
+	void DrawForTurn(Side side)
+	{
+		CheckIsDeckEmpty(side);
+		if(side == Side.Player)
 		{
-			do
-			{
-				if(aiDeckEmpty == false)
-				{
-					AddToEnemyHand();
-					Debug.Log ("Added to enemy hand done.");
-				}
-				n++;
-				Debug.Log("Into AddToEnemyActive");
-				SelectCardAI();
-			}while(n<1);
-			timer = 0.0f;
+			if(playerDeckEmpty == false) AddToPlayerHand();
 		}
-		
-		//Checks through deck of the active area for each card so they can all attack.
-		foreach(CardDef card in aiActive.deck)
+		else
 		{
-			if(card.HasAttacked != true && playerActive.deck.Count > 0)
+			if(aiDeckEmpty == false) AddToEnemyHand();
+		}
+	}
+
+	void GainSupply(Side side)
+	{
+		// Supply was previously granted inside EndTurn() to whichever side was *about to*
+		// act, which made it hard to reason about. It is now granted to the side whose
+		// turn is beginning. Note nothing spends supply yet — see Docs/KnownBugs.md C4,
+		// fixed in Milestone 3.
+		if(side == Side.Player)
+		{
+			if(playerInstance.playerSupply < playerInstance.MaxSupply)
 			{
-				Battle();
+				playerInstance.playerSupply++;
+			}
+		}
+		else
+		{
+			if(enemyInstance.enemySupply < enemyInstance.MaxSupply)
+			{
+				enemyInstance.enemySupply++;
+			}
+		}
+	}
+
+	// HasAttacked was set to true and never cleared, so once turns actually worked every
+	// unit would have become a one-shot. See Docs/KnownBugs.md F2 — a latent bug that
+	// this milestone would otherwise have activated.
+	void RefreshUnits(Side side)
+	{
+		List<CardDef> units = side == Side.Player ? playerActive.deck : aiActive.deck;
+		foreach(CardDef card in units)
+		{
+			card.HasAttacked = false;
+		}
+	}
+
+	void ResolveAttacks(Side side)
+	{
+		List<CardDef> attackers = side == Side.Player ? playerActive.deck : aiActive.deck;
+		List<CardDef> defenders = side == Side.Player ? aiActive.deck : playerActive.deck;
+
+		// Iterate a snapshot: Attack() removes destroyed cards from the defending list,
+		// and future combat features (retaliation, area effects) will mutate this one
+		// too. See Docs/KnownBugs.md F1.
+		foreach(CardDef card in new List<CardDef>(attackers))
+		{
+			if(card.HasAttacked == false && defenders.Count > 0)
+			{
+				Battle(side);
 				card.HasAttacked = true;
 			}
 		}
-		m_state = GameState.Resolved;
-		Debug.Log(m_state);
-		if(m_state == GameState.Resolved)
-		{
-			Debug.Log ("I have reached endTurn in playerTurn");
-			EndTurn();
-		}
-		
-	}
-
-	void UserTurn()
-	{
-		Debug.Log ("What is playerTurnOver currently at when entering player turn");
-		Debug.Log (playerTurnOver);
-		if(playerTurnOver == false)
-		{
-			n = 0;
-			Debug.Log("In User Turn");
-			CheckIsDeckEmpty();
-			do
-			{
-				if(playerDeckEmpty == false)
-				{
-					AddToPlayerHand();
-					Debug.Log ("Added to player hand done.");
-				}
-				n++;
-			}while(n<1);
-
-			foreach(CardDef card in playerActive.deck)
-			{
-				if(card.HasAttacked != true && aiActive.deck.Count > 0)
-				{
-					Battle();
-					card.HasAttacked = true;
-				}
-			}
-			m_state = GameState.Resolved;
-		
-			//System.Threading.Thread.Sleep(5000);
-			if(m_state == GameState.Resolved)
-			{
-				EndTurn();
-			}
-		}
-	}
-	#endregion
-
-	//Ending turns EndTurn()
-	#region
-	void EndTurn()
-	{
-		justChanged = false;
-		Debug.Log("Changing turn");
-		m_state  = GameState.Begin;
-		if(playerFirst == true && justChanged == false)
-		{
-			playerFirst = false;
-			justChanged = true;
-			playerTurnOver = true;
-			if(playerInstance.playerSupply <10)
-			{
-				playerInstance.playerSupply = playerInstance.playerSupply + 1;
-			}
-		}
-		if(playerFirst == false && justChanged == false)
-		{
-			playerFirst = true;
-			justChanged = true;
-			playerTurnOver = false;
-			if(enemyInstance.enemySupply<10)
-			{
-
-				enemyInstance.enemySupply = enemyInstance.enemySupply + 1;
-			}
-		}
-
 	}
 	#endregion
 
 
 	//Check deck is not empty CheckIsDeckEmpty()
 	#region
-	public void CheckIsDeckEmpty()
+	public void CheckIsDeckEmpty(Side side)
 	{
-		if(m_state == GameState.AITurn)
+		if(side == Side.AI)
 		{
-			if(aiDeck.deck.Count != 0)
-			{
-				aiDeckEmpty = false;
-			}else
-			{
-				aiDeckEmpty = true;
-				Debug.Log("Deck is empty");
-			}
+			aiDeckEmpty = aiDeck.deck.Count == 0;
 		}
-		if(m_state == GameState.PlayerTurn)
+		else
 		{
-			if(playerDeck.deck.Count != 0)
-			{
-				playerDeckEmpty = false;
-			}else
-			{
-				playerDeckEmpty = true;
-				Debug.Log("Deck is empty");
-			}
+			playerDeckEmpty = playerDeck.deck.Count == 0;
 		}
 	}
-
-
 	#endregion
-	
-	//Methods within the update statement, placed in call order.
-	#region
-	//Initial Setup function adds a number of cards to either the enemy or player hand at start up
+
+	//Match setup
 	#region
 
+	//Initial Setup function adds a number of cards to either the enemy or player hand at start up
 	void InitialSetUp()
 	{
-		for(int i = 0; i<5;i++)
+		for(int card = 0; card < 5; card++)
 		{
-			if(aiDeck.deck.Count != null)
+			// The original guards were `if (deck.Count != null)` on an int, which is
+			// always true. Deal() would then index an empty list. See Docs/KnownBugs.md C6.
+			if(aiDeck.deck.Count > 0)
 			{
 				AddToEnemyHand();
 			}
-			if(playerDeck.deck.Count != null)
+			if(playerDeck.deck.Count > 0)
 			{
 				AddToPlayerHand();
 			}
 		}
-		FlipCoin();
-		m_state = GameState.Begin;
+		turns.BeginMatch(FlipCoin());
 	}
 
-	void FlipCoin()
+	Side FlipCoin()
 	{
-		System.Random random = new System.Random();
-		int num = random.Next(0,2);
-		if(num == 0)
-		{
-			playerFirst = false;
-			Debug.Log ("Player is not first");
-		}
-		else
-		{
-			playerFirst = true;
-			Debug.Log ("Player is first");
-		}
+		Side first = Random.Range(0, 2) == 0 ? Side.AI : Side.Player;
+		Debug.Log(first + " goes first");
+		return first;
 	}
 	#endregion
-	//Change current turn ChangeTurn()
-	#region
-	public void ChangeTurn()
-	{
-		if(playerFirst == false)
-		{
-			m_state = GameState.AITurn;
-		}
-		if(playerFirst == true)
-		{
-			m_state = GameState.PlayerTurn;
-		}
-	}
-	#endregion
-	
-	//LaunchTurn()
-	#region
-	public void LaunchTurn()
-	{
-		if(m_state == GameState.AITurn)
-		{
-			playerTurnOver = true;
-			EnemyTurn();
-		}
-		if(m_state == GameState.PlayerTurn)
-		{
-			playerTurnOver = false;
-			UserTurn();
-		}
-	}
-	#endregion
-	
+
 	//Check to see if AI or Player Wins CheckForWinner()
 	#region
 	public void CheckForWinner()
 	{
+		if(turns.Phase == TurnPhase.GameOver) return;
+
 		if(playerInstance.playerMorale <= 0)
 		{
-			m_state = GameState.AIWin;
-			ShowMessage("AI wins");
+			turns.EndMatch();
+			ShowOnly(AIWins);
+			endGameTimer = 0.0f;
 		}
-		if(enemyInstance.enemyMorale <=0)
+		else if(enemyInstance.enemyMorale <= 0)
 		{
-			m_state = GameState.PlayerWin;
-			ShowMessage("Player wins");
+			turns.EndMatch();
+			ShowOnly(PlayerWins);
+			endGameTimer = 0.0f;
 		}
 	}
-	#endregion
 	#endregion
 
 	//Update()
 	#region
-	void Update () 
+	void Update ()
 	{
-		if(m_state == GameState.Initial)
+		if(matchStarted == false)
 		{
 			InitialSetUp();
+			matchStarted = true;
 			Debug.Log ("Initial Set up done.");
 		}
-		if(m_state == GameState.Begin)
+
+		if(turns.Phase == TurnPhase.GameOver)
 		{
-			for(int x = 0; x<2; x ++)
+			endGameTimer += Time.deltaTime;
+			if(endGameTimer >= endGameMessageSeconds)
 			{
-				Debug.Log(m_state);
-				ChangeTurn();
-				Debug.Log("LaunchTurnNow");
-				Debug.Log(m_state);
-				LaunchTurn();
-				CheckForWinner();
+				SceneManager.LoadScene("MainMenu");
+			}
+			return;
+		}
+
+		// The AI is the only side that acts without player input, so it is the only side
+		// that needs a timer. It requests its own end of turn when finished.
+		if(turns.ActiveSide == Side.AI && turns.Phase == TurnPhase.Main)
+		{
+			aiThinkTimer += Time.deltaTime;
+			if(aiThinkTimer >= aiThinkSeconds)
+			{
+				SelectCardAI();
+				turns.RequestEndTurn();
 			}
 		}
 
+		// Drain every transition that is ready. This terminates: TurnPhase.Main does not
+		// advance unless an end-turn has been requested, so a player turn parks here and
+		// waits for the End Turn button. That wait is what this milestone adds.
+		while(turns.Advance())
+		{
+		}
 	}
 	#endregion
 }

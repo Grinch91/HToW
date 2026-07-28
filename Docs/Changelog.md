@@ -4,6 +4,33 @@ Notable changes to the project. Newest first.
 
 ---
 
+## 2026-07-28 — Milestone 1: A real turn ✅ COMPLETE
+
+Branch: `milestone-1-turns`. **The defining defect of the project is fixed: turns no longer advance on their own.**
+
+### Added
+- **`Assets/Scripts/Battle/TurnController.cs`** — owns turn order, phase and turn number. A plain C# class, not a MonoBehaviour: it has no per-frame behaviour, needs no scene wiring, and can be tested without Unity. First extraction from the `Game.cs` God class.
+- Phases are `Setup → TurnStart → Main → TurnEnd`, and **`Main` cannot self-advance**. Only `RequestEndTurn()` leaves it. The fix is structural rather than a patch: no amount of calling `Advance()` can move a turn on.
+
+### Changed in `Game.cs`
+- `Update()` no longer runs a player turn and an AI turn every frame. It drains ready transitions and parks in `Main`.
+- **The End Turn button works.** It previously set a `buttonPushed` field that no code ever read.
+- Turn start now draws, grants supply, **resets `HasAttacked`**, and shows the turn banner.
+- Attacks resolve at turn end, iterating a **snapshot** of the attacker list.
+- `GameState` (nine states, two never used, one tautological) replaced by `TurnPhase` + `Side`. `BuildDeck`, `CheckIsDeckEmpty`, `Battle`, `AttackingCard`, `TargetCard` and `Attack` now take an explicit `Side` instead of reading the state machine — removing the "state machine as argument channel" anti-pattern.
+- Removed dead fields: `playerFirst`, `playerTurnOver`, `justChanged`, `buttonPushed`, `n`, `timer`, `timerMax`, `messageTimer`, `seperatingCardsAI/Player`, `FlyTime`, `Buttons`.
+- Win/lose messages no longer depend on a timer that never reset.
+
+### Verified
+- Unity batch compile: exit code 0, **zero errors**. The four remaining warnings are pre-existing; one is the compiler independently confirming bug C6.
+- **19/19 behavioural assertions pass** against `TurnController`, compiled standalone with Unity's bundled .NET 8 SDK — possible only because the class has no Unity dependency. The headline assertion: *10,000 frames with no player input do not advance the turn*, against a 2014 baseline of 716 turn cycles in roughly twelve seconds.
+
+### Deliberately not fixed
+- **C1 is guarded, not fixed.** `AttackingCard`/`TargetCard` no longer dereference a null `BattleController`, so combat stops throwing — but the player still cannot select an attacker or target, so player attacks do not resolve. A stopgap, clearly marked in the source, so that the turn system can be observed at all. The real fix is Milestone 2's selection service.
+- C2 (playing the wrong card), C4 (supply never spent), M1 (AI plays from its deck) are untouched — Milestones 2 and 3.
+
+---
+
 ## 2026-07-28 — Milestone 0: Foundations ✅ COMPLETE
 
 Branch: `milestone-0-foundations`. All six steps done.

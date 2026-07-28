@@ -6,6 +6,18 @@ Legend: **[LOG]** = confirmed by the recorded runtime log. **[STATIC]** = derive
 
 ---
 
+## Status
+
+| Milestone | Resolved |
+|---|---|
+| **M1 — Real turns** | **C3** (turns at frame rate) · **M6** (turn messages never shown) · **M7** (wrong timer reset) · **F2** (`HasAttacked` never reset) · **N5**, **N8**, **N10** (dead fields/states removed) · **F1** *mitigated* (attack loops now iterate a snapshot) · **C6** *partially* — the `int != null` guards in `InitialSetUp()` are fixed, but `Deck.Deal()` still has one |
+| Retracted | **C5** — never a bug, see below |
+| Still open | C1, C2, C4, C6 (`Deal`), M1–M5, M8–M12, and the remaining minor items |
+
+**C1 is guarded but not fixed.** Player attacks no longer throw, but the player still cannot select an attacker or target, so player attacks simply do not resolve. The real fix is Milestone 2.
+
+---
+
 ## CRITICAL — the game cannot be played through
 
 ### C1. Combat throws `NullReferenceException` on the first attack **[LOG]**
