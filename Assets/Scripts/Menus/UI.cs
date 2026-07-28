@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.SceneManagement;
 using System.Collections;
 
 //Script handling the Menu systel within the game
@@ -77,7 +78,7 @@ public class UI : MonoBehaviour {
 		GUI.Label(new Rect((Screen.width/2-130),600,250,58),btn, mystyle);
 		if(GUI.Button(new Rect((Screen.width/2-100),610,100,40), "Load Battle", mystyle)) {
 			Debug.Log("Loading Battle Scene");
-			Application.LoadLevel("Battle");
+			SceneManager.LoadScene("Battle");
 		}
 
 		GUI.Label(new Rect((Screen.width/2-130),680,250,58),btn, mystyle);

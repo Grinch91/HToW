@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.SceneManagement;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -154,7 +155,7 @@ public class Game : MonoBehaviour {
 			AITurn.SetActive(false);
 			if(messageTimer >= timerMax)
 			{
-				Application.LoadLevel("MainMenu");
+				SceneManager.LoadScene("MainMenu");
 			}
 			timer=0.0f;
 		}		
@@ -173,7 +174,7 @@ public class Game : MonoBehaviour {
 			AITurn.SetActive(false);
 			if(messageTimer >= timerMax)
 			{
-				Application.LoadLevel("MainMenu");
+				SceneManager.LoadScene("MainMenu");
 			}
 			timer=0.0f;
 		}
