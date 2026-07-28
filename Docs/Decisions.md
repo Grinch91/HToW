@@ -76,6 +76,30 @@ Format: `## D-nn — Title` · **Date** · **Status** (Proposed / Accepted / Sup
 
 ---
 
+## D-07 — Carry the four recovered abilities on `CardData` from the start
+**2026-07-28 · Accepted** *(answers Q-03)*
+
+**Decision:** `CardAbility` (`Volley`, `United`, `Berserker`, `Bloodrush`) is a first-class field on `CardData` from day one, and the six cards whose 2014 `ceffect` values were recovered carry them. **None are implemented yet.**
+
+**Why:** retrofitting an ability system into an established card model is far more expensive than leaving room for one. The keywords also do real design work for free — `Volley`/`United` read Celtic-defensive, `Berserker`/`Bloodrush` read Norse-aggressive, so faction identity is already latent in the data.
+
+**Consequences:** the three mercenary cards have **no** abilities, because none were ever authored for them — the 2014 project had no `CardInfo` asset for MercArcher, Sellsword or Captain. Rather than invent values and pass them off as recovered, they are `None` and flagged as an open design task. `Docs/HistoricalResearch.md` §4.1 argues the mercenaries should be replaced outright with better-attested units (gallowglass, hired Norse fleets), so authoring abilities for them now would likely be wasted.
+
+Also captured on `CardData`: `Faction`, `CardType` (recovered `ctype`), and `Historicity` — the last so that historical fact, mythology and invented content stay visibly distinguishable, as the project brief requires.
+
+---
+
+## D-08 — Milestone 2 migrates representation, not values
+**2026-07-28 · Accepted**
+
+**Decision:** the `CardData` and `DeckData` assets reproduce the **currently live** stats from `Deck.cs` and the exact deck compositions from `celtic.txt`/`viking.txt`. No balance changes.
+
+**Why:** conflating a data-model refactor with a rebalance would make it impossible to tell which change caused a behavioural difference. Verified faithful: the generated decks total **21** and **72** morale, matching the Phase 1 analysis in `GameplayLoop.md` §6 exactly.
+
+**Consequences:** the known balance faults ride along untouched — Celtic still cannot lose (M12), Bondi is still dominated by Ceithern, Fianna is still overpowered. All are Milestone 4. The pre-rebalance 2014 values recovered in `CardSystem.md` §4c are the natural starting point for that pass.
+
+---
+
 ## OPEN QUESTIONS — need your decision
 
 These change what gets built. They do not block Milestone 0, which is why the roadmap starts there.
@@ -86,8 +110,8 @@ Should a defender deal damage back to its attacker? Currently it does not, which
 ### Q-02 — Linear campaigns or run-based structure? *(blocks Milestone 7)*
 The original vision is a linear historical campaign per period. A Hand of Fate–style branching run would give replayability for free, make deckbuilding happen during play, and turn historical events into choice nodes. **My recommendation: run-based**, but this trades away the ability to tell a specific story beat by beat. Genuinely your call — it depends whether replayability or storytelling matters more to you. See `GameDesign.md` §7.
 
-### Q-03 — Reinstate the four abilities? *(affects Milestone 2 data model)*
-`Volley`, `United`, `Berserker`, `Bloodrush` were designed in 2014 and the code is lost. **Recommendation: yes**, and design `CardData` to carry them from the start even if they're implemented later — retrofitting an ability system is far more expensive than leaving room for one.
+### ~~Q-03 — Reinstate the four abilities?~~ → **ANSWERED: yes** (2026-07-28)
+See D-07 below.
 
 ### Q-04 — Is the target a finishable personal project or an open-ended one?
 This changes scope advice throughout. Four campaigns is a multi-year solo undertaking. One polished campaign is achievable. **Recommendation: build Celtic Ireland as a complete vertical slice**, then decide.

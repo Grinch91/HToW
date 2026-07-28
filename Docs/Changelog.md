@@ -4,6 +4,30 @@ Notable changes to the project. Newest first.
 
 ---
 
+## 2026-07-28 — Milestone 2, slice 1: the card data model 🚧 IN PROGRESS
+
+Branch: `milestone-2-card-identity`. **Additive only — nothing existing was modified, so the game behaves exactly as it did after Milestone 1.**
+
+### Added — code
+- **`CardData : ScriptableObject`** — the immutable definition of a card, authored in the Inspector. Restores the abandoned 2014 design, including its `ctype` and `ceffect` fields.
+- **`CardInstance`** — plain C# runtime state (`CurrentHp`, `HasAttacked`, `Owner`). **The definition/state split is the whole point**: conflating them in the old `CardDef` is the root cause of C2, M4 and M5. Identity is now reference identity, so two Raiders are two distinct objects.
+- **`DeckData : ScriptableObject`** — a named deck list with counts, replacing `File.ReadAllLines(Application.dataPath + ...)`. Exposes `TotalMoraleCost`, since a deck's combined morale cost is effectively its life pool and needs to be visible while authoring (bug M12).
+- **`CardEnums.cs`** — `Faction`, `CardType`, `CardAbility`, `Historicity`.
+
+### Added — assets
+- **9 `CardData` assets** with the four recovered abilities attached (Volley, United, Berserker, Bloodrush). See Decisions D-07.
+- **2 `DeckData` assets**, Celtic and Viking.
+
+### Verified
+- Unity batch compile: exit 0, zero errors.
+- Assets hand-authored as YAML then **loaded back through `AssetDatabase`** to prove every reference resolves — sprite links, ability arrays and enum values all correct.
+- `DeckData.BuildCards()` produces 5 and 11 `CardInstance`s totalling **21** and **72** morale — matching the Phase 1 figures in `GameplayLoop.md` §6 exactly, confirming a faithful migration (Decisions D-08).
+
+### Still to do in Milestone 2
+Card zones (pile vs. board), a `CardView` prefab and factory replacing the four duplicated construction methods, a selection service replacing `BattleController` (bug C1), and rewiring `Game.cs` onto the new model. Until then `Deck.cs`, `CardDef`, `CardAttributes` and the `.txt` deck files remain live and in use.
+
+---
+
 ## 2026-07-28 — Milestone 1: A real turn ✅ COMPLETE
 
 Branch: `milestone-1-turns`. **The defining defect of the project is fixed: turns no longer advance on their own.**

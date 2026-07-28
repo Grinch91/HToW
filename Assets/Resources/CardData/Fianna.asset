@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 930769aa719f3f4418e94e79f34fc39d, type: 3}
+  m_Name: Fianna
+  m_EditorClassIdentifier: 
+  id: fianna
+  displayName: Fianna
+  art: {fileID: 21300000, guid: 3ffcdf82d836e5840996ab5247e1af48, type: 3}
+  hp: 12
+  damage: 12
+  supplyCost: 4
+  moraleCost: 10
+  faction: 0
+  cardType: 0
+  abilities: 03000000
+  flavourText: 
+  historicalNote: The roving warrior-bands of the Fenian Cycle, associated with Fionn
+    mac Cumhaill. Literary rather than historical units, though whether real fian
+    warrior-bands existed as a social institution is genuinely debated.
+  historicity: 1

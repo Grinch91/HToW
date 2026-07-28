@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 930769aa719f3f4418e94e79f34fc39d, type: 3}
+  m_Name: Bondi
+  m_EditorClassIdentifier: 
+  id: bondi
+  displayName: Bondi
+  art: {fileID: 21300000, guid: 8fe5a15bb4e19fa41a799395fb21437c, type: 3}
+  hp: 8
+  damage: 4
+  supplyCost: 4
+  moraleCost: 5
+  faction: 1
+  cardType: 0
+  abilities: 02000000
+  flavourText: 
+  historicalNote: Free Norse landholding farmers who formed the backbone of a levy.
+    Not professional soldiers, and numerous rather than remarkable.
+  historicity: 0
