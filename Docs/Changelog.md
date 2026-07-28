@@ -4,6 +4,33 @@ Notable changes to the project. Newest first.
 
 ---
 
+## 2026-07-28 — Milestones 5 & 6 ✅ COMPLETE — a real opponent, and deckbuilding
+
+Branch: `milestone-5-6-ai-deckbuilding`. **The genre label is finally earned: this is now a deckbuilding card game.**
+
+### Milestone 5 — an opponent worth playing
+- **`AiController` extracted** from `Game` as plain C#, so the opponent's judgement is directly testable — the hardest thing to verify by eye.
+- **Three difficulty tiers** — Cautious, Balanced, Ruthless — expressed as thresholds on the *shared* scoring function, not as separate code paths. Every tier plays by identical rules; only its appetite for risk differs.
+- The AI now plays **as many cards as it can afford** each turn. The old `do { … } while (n < 1)` loop ran exactly once — a stand-in for a rule never written.
+
+> **Design fix found by testing.** The first cut applied a flat minimum score, which had `Cautious` **declining risk-free attacks** — it read as broken rather than careful. Difficulty now gates only attacks where the attacker would *die*; a free attack is always taken at every level. Two failing tests caught this before it ever ran.
+
+### Milestone 6 — deckbuilding
+- **`CardDatabase`** — every card indexed by id, so player-built decks can be resolved from saved data.
+- **`SavedDeck`** — a runtime, JSON-serialisable deck. `DeckData` assets are authored at edit time and cannot represent something the player builds while playing.
+- **`DeckValidator`** — size (15–40), a 4-copy limit, and the interesting one: **a deck whose total morale cost does not exceed starting morale is rejected**, because it literally could not be defeated. That was true of the original Celtic deck, and a deckbuilder would let players recreate it endlessly.
+- **`SaveSystem`** — the project's first persistence, to `Application.persistentDataPath`. A corrupt save never blocks startup; a fresh profile is seeded from the authored decks. The 2014 menu had a "Continue" button whose body was commented out.
+- **A working deckbuilder.** The "Cards" button has shown *"Sorry N/A"* since 2014. It now opens a collection browser and deck editor with live legality feedback, multiple named decks, and the selected deck carried into battle.
+
+### Verified
+- Compile clean. **45/45 tests pass**, including AI difficulty behaviour, deck round-tripping through JSON, and every validation rule.
+
+### Known gaps
+- The deckbuilder is `OnGUI`, matching the existing menu. It works, but it is the wrong long-term technology and does not scale across resolutions — the UI pass should rebuild the front end in uGUI.
+- The AI still draws its deck from the authored `DeckData` rather than a profile; per-opponent decks arrive with campaigns.
+
+---
+
 ## 2026-07-28 — Milestones 3 & 4 ✅ COMPLETE — the battle is now winnable
 
 Branch: `milestone-3-4-economy-combat`. **This is the milestone where HToW becomes a game.** A battle can be played end to end and won or lost.

@@ -44,6 +44,9 @@ public class Game : MonoBehaviour
     [Tooltip("Seconds the AI pauses before acting, so the player can follow what it does.")]
     public float aiThinkSeconds = 1.5f;
 
+    [Tooltip("How hard the opponent plays. All tiers obey identical rules; only their appetite for risk differs.")]
+    public AiDifficulty aiDifficulty = AiDifficulty.Balanced;
+
     [Header("Card visuals")]
     public Vector2 cardSize = new Vector2(2.0f, 3.0f);
     public Vector3 cardScale = new Vector3(0.75f, 0.75f, 1.0f);
@@ -56,6 +59,7 @@ public class Game : MonoBehaviour
     #region
     readonly TurnController turns = new TurnController();
     readonly BattleSelection selection = new BattleSelection();
+    AiController ai;
 
     GameObject PlayerWins;
     GameObject PlayerTurn;
@@ -102,6 +106,8 @@ public class Game : MonoBehaviour
         playerActive.Configure(ZoneKind.Board, Side.Player);
         aiActive.Configure(ZoneKind.Board, Side.AI);
 
+        ai = new AiController(aiDifficulty);
+
         playerDiscard = CreateDiscardZone("Discard-Player", Side.Player);
         aiDiscard = CreateDiscardZone("Discard-Enemy", Side.AI);
 
@@ -110,7 +116,7 @@ public class Game : MonoBehaviour
         turns.TurnStarted += OnTurnStarted;
         turns.TurnEnded += OnTurnEnded;
 
-        BuildDeck(playerDeck, ResolveDeck(playerDeckData, "DeckData/Celtic"), Side.Player);
+        BuildPlayerDeck();
         BuildDeck(aiDeck, ResolveDeck(aiDeckData, "DeckData/Viking"), Side.AI);
 
         UpdateHud();
@@ -212,6 +218,26 @@ public class Game : MonoBehaviour
         }
 
         return loaded;
+    }
+
+    // The player brings whichever deck they selected in the deckbuilder. Falls back to
+    // the authored Celtic list when there is no profile — a fresh install, or a save
+    // that failed to read.
+    void BuildPlayerDeck()
+    {
+        SavedDeck chosen = SaveSystem.Profile.SelectedDeck;
+
+        if (chosen != null && chosen.CardCount > 0)
+        {
+            playerDeck.Clear();
+            playerDeck.AddRange(chosen.BuildCards(Side.Player));
+            playerDeck.Shuffle();
+            Debug.Log("Built player deck '" + chosen.deckName + "': " + playerDeck.Count
+                      + " cards, " + chosen.TotalMoraleCost + " total morale cost");
+            return;
+        }
+
+        BuildDeck(playerDeck, ResolveDeck(playerDeckData, "DeckData/Celtic"), Side.Player);
     }
 
     // Card stats used to live in a nine-branch if-chain inside Deck.AddToDeck(), so a
@@ -622,23 +648,16 @@ public class Game : MonoBehaviour
     // entirely (bug M1). Scoring and difficulty are Milestone 5.
     void RunAiTurn()
     {
-        CardInstance best = null;
-        foreach (CardInstance card in aiHand.Cards)
+        // Keep playing while anything is affordable, rather than exactly one card per
+        // turn. The old `do { ... } while (n < 1)` loop ran precisely once — a stand-in
+        // for a rule that was never written.
+        while (true)
         {
-            if (card.Data.SupplyCost > AvailableSupply(Side.AI))
+            CardInstance choice = ai.ChoosePlay(aiHand.Cards, AvailableSupply(Side.AI));
+            if (choice == null || !PlayCard(choice))
             {
-                continue;
+                break;
             }
-
-            if (best == null || card.Data.Damage > best.Data.Damage)
-            {
-                best = card;
-            }
-        }
-
-        if (best != null)
-        {
-            PlayCard(best);
         }
     }
 
@@ -664,29 +683,13 @@ public class Game : MonoBehaviour
 
     CardInstance ChooseAiTarget(CardInstance attacker)
     {
-        CardInstance best = null;
-        int bestScore = 0;   // never take an attack scored as a net loss
-
-        foreach (CardInstance candidate in playerActive.Cards)
-        {
-            // Scoring lives in CombatResolver so the AI is judged by the same rules the
-            // player plays under, retaliation included. The old version applied two
-            // ungraded heuristics, so the LAST matching card won rather than the best
-            // one, and it ignored MoraleCost entirely — the actual win condition.
-            int score = CombatResolver.Score(attacker, candidate);
-            if (score > bestScore)
-            {
-                bestScore = score;
-                best = candidate;
-            }
-        }
-
-        if (best == null)
+        CardInstance target = ai.ChooseTarget(attacker, playerActive.Cards);
+        if (target == null)
         {
             Debug.Log(attacker.Data.DisplayName + " holds back — no attack worth making");
         }
 
-        return best;
+        return target;
     }
     #endregion
 
