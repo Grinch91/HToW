@@ -4,6 +4,27 @@ Notable changes to the project. Newest first.
 
 ---
 
+## 2026-07-28 — Milestone 0: Foundations (partially complete)
+
+Branch: `milestone-0-foundations`. **Steps 1, 2 and 6 are done. Steps 3, 4 and 5 are blocked — no Unity installation exists on this machine.**
+
+### Done
+- **Added `.gitignore`** and untracked `HToW.exe` + `HToW_Data/` (~25 MB, ~96% of repo size). Left on disk; `output_log.txt` findings already preserved in `GameplayLoop.md` §4.
+- **Removed ~40% of `Assets/`** — dead scripts, four broken prefabs, dead duplicate deck files, the abandoned `OldMethod` ScriptableObjects, a Dropbox conflict scene, three `Thumbs.db`, and three orphan folder `.meta`s. 53 files, all verified unreferenced first, all retained in git history.
+- **`Assets/` now has zero orphan and zero missing `.meta` files**, which keeps GUIDs stable across the upgrade.
+- **Rewrote `README.md`** to describe reality rather than a 2017 to-do list.
+- Set repo-local git identity to match the existing commit author.
+
+### Findings during the work
+- **The numeric values in the `OldMethod` ScriptableObjects were successfully decoded** from the binary before deletion — full stat lines, not just the ability names. Recorded in `CardSystem.md` §4c. Two notable results: morale costs were roughly **halved** in the later balance pass (Fianna, Bondi and Huscarl exactly 2×), and **Bondi was heavily nerfed** (3 cost/12 HP → 4 cost/8 HP), which explains why it is now the strictly-dominated worst card in the game.
+- **Bug C1 independently re-confirmed by a second method.** GUID analysis of every script against every scene and prefab shows `BattleController.cs` is attached to nothing — matching both the field-name evidence and the 2014 stack trace.
+- Also confirmed dead by the same analysis: `CardAttributes.cs` and `MouseController.cs` appear in no scene (they are added at runtime via `AddComponent`, so they are live code and were kept).
+
+### Blocked — needs Unity installed
+- Force Text serialization (step 3), the Unity 6 upgrade (step 4), and the Build Settings fix (step 5). See `UnityUpgrade.md` §5.
+
+---
+
 ## 2026-07-28 — Phase 1: reverse-engineering complete
 
 **No code changed.** Investigation and documentation only.

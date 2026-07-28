@@ -29,7 +29,9 @@ Format: `## D-nn — Title` · **Date** · **Status** (Proposed / Accepted / Sup
 ---
 
 ## D-03 — Force Text serialization before anything else
-**2026-07-28 · Proposed**
+**2026-07-28 · Proposed · amended same day**
+
+**Amendment:** no Unity installation exists on this machine, so Unity 4.3.4 cannot perform the conversion and this can no longer happen *before* the upgrade. Force Text becomes the first action taken inside Unity 6 instead. Editing the binary `EditorSettings.asset` by hand was considered and **rejected** — the sole benefit would have been a reviewable upgrade diff, and that is lost regardless, since opening in Unity 6 converts and upgrades in one pass. See `UnityUpgrade.md` §5 Phase 1.
 
 **Decision:** switch asset serialization from Force Binary to Force Text, as an isolated commit.
 

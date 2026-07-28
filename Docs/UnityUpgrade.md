@@ -80,12 +80,15 @@ Worth stating explicitly so no time is wasted on them:
 3. **Delete the dead code and broken prefabs** listed in `TechnicalDebt.md` §7. Fewer broken references to diagnose after the upgrade. Critically, this removes `MusicManager.cs` — one of only three files with hard compile errors.
 4. **Commit.** This is your known-good pre-upgrade baseline.
 
-### Phase 1 — serialization (still in Unity 4, if you can run it)
-5. Set **Asset Serialization → Force Text** in Editor Settings and let Unity rewrite every asset. Commit that rewrite **on its own**, changing nothing else.
+### Phase 1 — serialization
 
-   This step is worth real effort to get right. Without it, every subsequent upgrade change is an unreadable binary blob and you will have no way to see what Unity did to your scenes. With it, the upgrade becomes a reviewable diff.
+> **Superseded 2026-07-28: no Unity installation exists on this machine** (no Unity Hub, no editor under `Program Files`). Unity 4.3.4 therefore cannot perform the text conversion, and the fallback below applies.
+>
+> **Do not** attempt to flip the setting by editing `ProjectSettings/EditorSettings.asset` directly — it is binary, and the only benefit of doing so would be a reviewable upgrade diff, which is lost anyway: opening in Unity 6 performs the text conversion *and* the upgrade in a single pass regardless of when the flag is set. Binary surgery for no gain.
 
-   *If Unity 4.3.4 will no longer run on Windows 11* (plausible), do this immediately **after** the first open in the new version instead, as its own commit — you lose the ability to review the upgrade diff, but you gain it for everything after.
+5. **First action after installing Unity 6 and opening the project:** set **Edit → Project Settings → Editor → Asset Serialization → Force Text**, let Unity rewrite every asset, and commit that rewrite **on its own**, changing nothing else.
+
+   Accepted cost: the upgrade itself is one large binary→text commit that cannot be meaningfully reviewed. Every change *after* it is fully diffable, which is the point.
 
 ### Phase 2 — the jump
 6. Open in **Unity 6 LTS directly.** Do not step through 5.x → 2017 → 2019 → 2021. Incremental upgrades are advice for large projects with deep package dependencies; here they would multiply the work with no benefit. Take the API Updater's automatic fixes.
