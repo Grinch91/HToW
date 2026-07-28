@@ -13,7 +13,9 @@ Format: `## D-nn — Title` · **Date** · **Status** (Proposed / Accepted / Sup
 
 **Why:** the project had zero documentation, 12 empty doc stubs, three commits, and binary-serialized assets. Implementation details had been forgotten. Changing code first would have meant guessing.
 
-**Consequences:** the investigation found several things that no amount of code-reading alone would have surfaced — the abandoned `CardInfo`/ability system, the deleted `CardLibrary` folder, the missing `Battle Chariot` tag, and a real 2014 stack trace in the committed build log. `Docs/` is now the source of truth.
+**Consequences:** the investigation found several things that no amount of code-reading alone would have surfaced — the abandoned `CardInfo`/ability system, the deleted `CardLibrary` folder, and a real 2014 stack trace in the committed build log. `Docs/` is now the source of truth.
+
+**Amendment 2026-07-28:** one finding derived from binary string extraction (bug C5, a supposedly missing `Battle Chariot` tag) turned out to be **false** once text serialization made `TagManager.asset` directly readable. Binary-extraction evidence is provisional; absence of a string is weak evidence. See `KnownBugs.md` C5.
 
 ---
 
@@ -44,7 +46,7 @@ Format: `## D-nn — Title` · **Date** · **Status** (Proposed / Accepted / Sup
 ## D-04 — Fix card identity as one refactor, not six patches
 **2026-07-28 · Proposed**
 
-**Decision:** bugs C1, C2, C5, M3, M4, M5 and F3 will be fixed together in Milestone 2 by replacing string-based card identity and splitting `Deck` into `CardPile` / `Board`.
+**Decision:** bugs C1, C2, M3, M4, M5 and F3 will be fixed together in Milestone 2 by replacing string-based card identity and splitting `Deck` into `CardPile` / `Board`.
 
 **Why:** they are all symptoms of one root cause — a card is identified by its name string, and the in-play area is modelled as a draw pile. Patching them individually means writing six workarounds and then deleting all six.
 

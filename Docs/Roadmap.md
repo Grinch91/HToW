@@ -74,11 +74,11 @@ Difficulty: ★ trivial · ★★ small · ★★★ moderate · ★★★★ la
 6. Collapse the four card-construction methods into **one `CardView` prefab + a factory**.
 7. Move card selection state out of `BattleController` into a proper selection service (bug C1).
 
-**Fixes:** C1, C2, C5, C6, M3, M4, M5, N1, N6, F3.
+**Fixes:** C1, C2, C6, M3, M4, M5, N1, N6, F3.
 **Gameplay improvement:** combat stops crashing; playing a card plays the card you clicked.
 **Exit criterion:** you can play a card, select an attacker and a target, and kill something without an exception.
 
-> **Why one big milestone rather than seven small fixes:** C1, C2, C5, M3, M4 and M5 are all symptoms of one root cause (string identity + pile-modelled board). Patching them individually means writing six workarounds and then deleting all of them. This is the exception to "small reviewable steps" — but it should still be *implemented* as a sequence of small commits, each compiling.
+> **Why one big milestone rather than several small fixes:** C1, C2, M3, M4 and M5 are all symptoms of one root cause (string identity + pile-modelled board). Patching them individually means writing six workarounds and then deleting all of them. This is the exception to "small reviewable steps" — but it should still be *implemented* as a sequence of small commits, each compiling.
 
 ---
 

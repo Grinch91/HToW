@@ -20,7 +20,7 @@ It owns the state machine, turn order, deck construction, GameObject instantiati
 
 `CardDef.Name` is used simultaneously as: display name, GameObject name, **Unity tag**, the key for `FindGameObjectWithTag` destruction, the key for list removal by name, and the AI's selection key.
 
-**Cost today:** directly causes bugs C5 (missing `Battle Chariot` tag), M4 (destroys the wrong card), M5 (removes the wrong duplicate), and F3.
+**Cost today:** directly causes bugs M4 (destroys the wrong card), M5 (removes the wrong duplicate), and F3. It also means every card name must be maintained as a Unity tag by hand — currently correct, but a rename or a new card silently breaks card creation.
 
 **Verdict:** highest-leverage fix in the project. Replace with object references (`CardInstance`) and delete the tag usage entirely. Six known bugs collapse into one refactor. Non-negotiable before any content work.
 

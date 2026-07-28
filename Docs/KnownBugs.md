@@ -66,17 +66,19 @@ Consequence: cost-1 and cost-2 cards are always free and unlimited; cost-3+ card
 
 ---
 
-### C5. Playing a Battle Chariot throws `UnityException` **[STATIC]**
+### ~~C5. Playing a Battle Chariot throws `UnityException`~~ — **RETRACTED 2026-07-28. Not a bug.**
 
-`AddToActivePlayer()` does `newObj.tag = c1.Name`. Unity throws if the tag is not pre-registered. `TagManager.asset` defines:
-
-```
-Game, Ceithern, Fianna, Bondi, Raider, Huscarl, Captain, Sellsword, MercArcher
-```
-
-**`Battle Chariot` is missing.** It is card ID `1`, and it appears twice in `celtic.txt` — it is one of only two cards the player can currently afford (see C4). So the most-playable card in the starting deck crashes on play.
-
-This did not surface in the 2014 log because the build predates the current source (see `Architecture.md` §10).
+> **This finding was wrong.** It was derived from raw byte-string extraction of the binary `TagManager.asset`, which silently dropped the space-containing tag. Once the project was converted to text serialization during the Unity 6 upgrade, `TagManager.asset` could be read directly and lists **ten** tags:
+>
+> ```
+> Game, Ceithern, Battle Chariot, Fianna, Bondi, Raider, Huscarl, Captain, Sellsword, MercArcher
+> ```
+>
+> `Battle Chariot` is present at index 2 — exactly where the extraction skipped it. Every card name used by `newObj.tag = c1.Name` has a registered tag. **Playing a Battle Chariot does not throw.**
+>
+> The C-numbering is left with a gap rather than renumbered, so that references in other documents and in commit messages stay valid.
+>
+> **Lesson recorded:** conclusions drawn from binary string extraction are provisional. Absence of a string is weak evidence; presence is strong. Findings in this document tagged **[STATIC]** that depended on binary extraction — rather than on reading C# source — should be re-verified now that all assets are text.
 
 ---
 
@@ -193,7 +195,7 @@ The dependency chain matters. Fixing combat before turns is wasted work.
 1. **C3** (turn gating) — nothing else is testable until turns are discrete.
 2. **C1 + C2** (selection model, active-area model) — these are one refactor, not two patches.
 3. **C4 + M10 + M8** (real supply economy + a visible HUD) — the economy is meaningless while invisible.
-4. **C5, C6, M3–M5** (identity: replace name-strings and tags with instance references).
+4. **C6, M3–M5** (identity: replace name-strings and tags with instance references).
 5. **M1, M2** (make the AI play by the same rules as the player).
 6. **M11, M12** (deck contents and the morale/deck-size relationship).
 

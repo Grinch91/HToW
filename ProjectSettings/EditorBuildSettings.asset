@@ -8,15 +8,6 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/MainMenu.unity
     guid: 73683385ebbb4274296288b174449cd7
-  - enabled: 0
-    path: Assets/Scenes/BattleMenu.unity
-    guid: 00000000000000000000000000000000
-  - enabled: 0
-    path: Assets/Scenes/CardMenu.unity
-    guid: 00000000000000000000000000000000
-  - enabled: 0
-    path: Assets/Scenes/Battle.unity
-    guid: 4ef8857f31f5ed14faa21c6feb615ad9
   - enabled: 1
     path: Assets/Scenes/Battle.unity
     guid: 4ef8857f31f5ed14faa21c6feb615ad9
