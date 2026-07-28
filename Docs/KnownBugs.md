@@ -10,11 +10,12 @@ Legend: **[LOG]** = confirmed by the recorded runtime log. **[STATIC]** = derive
 
 | Milestone | Resolved |
 |---|---|
-| **M1 — Real turns** | **C3** (turns at frame rate) · **M6** (turn messages never shown) · **M7** (wrong timer reset) · **F2** (`HasAttacked` never reset) · **N5**, **N8**, **N10** (dead fields/states removed) · **F1** *mitigated* (attack loops now iterate a snapshot) · **C6** *partially* — the `int != null` guards in `InitialSetUp()` are fixed, but `Deck.Deal()` still has one |
+| **M1 — Real turns** | **C3** (turns at frame rate) · **M6** (turn messages never shown) · **M7** (wrong timer reset) · **F2** (`HasAttacked` never reset) · **N5**, **N8**, **N10** (dead fields/states removed) · **F1** *mitigated* |
+| **M2 — Card identity** | **C1** (selection service replaces `BattleController`) · **C2** (cards move by reference) · **C4** (supply checked against the real player and actually spent) · **C6** (`DrawTop()` guards emptiness) · **M1** (AI plays from its hand and pays supply) · **M2** (AI target choice is a scoring function weighting `MoraleCost`) · **M3**, **M4**, **M5** (no more tags or name-matching) · **N1**, **N2**, **N4**, **N5**, **N6**, **N11**, **F3** |
 | Retracted | **C5** — never a bug, see below |
-| Still open | C1, C2, C4, C6 (`Deal`), M1–M5, M8–M12, and the remaining minor items |
+| **Still open** | **M8** (no HUD) · **M9** *(moot — `MusicManager` deleted)* · **M10** (morale still not the intended value) · **M11**, **M12** (deck size and the unreachable loss condition) · **N3**, **N7**, **N9** · **F4**, **F5**, **F6** |
 
-**C1 is guarded but not fixed.** Player attacks no longer throw, but the player still cannot select an attacker or target, so player attacks simply do not resolve. The real fix is Milestone 2.
+Milestones 3 and 4 close the remainder. Note **F1** is now structurally handled — `CardZone.Snapshot()` exists precisely so attack loops iterate a copy.
 
 ---
 

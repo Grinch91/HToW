@@ -4,7 +4,40 @@ Notable changes to the project. Newest first.
 
 ---
 
-## 2026-07-28 — Milestone 2, slice 1: the card data model 🚧 IN PROGRESS
+## 2026-07-28 — Milestone 2, slice 2: rewiring ✅ M2 COMPLETE
+
+**Card identity is now a reference, not a string.** The old model is gone.
+
+### Added
+- **`CardZone`** — replaces `Deck`. A place cards can be, plus the anchor they lay out around. Cards move by reference, which is what makes bug C2 impossible. `DrawTop()` returns null on an empty pile instead of indexing it (C6). `Shuffle()` is a correct Fisher–Yates (N2). `LayOut()` centres cards on the zone rather than deriving x from the draw pile's remaining count (N6).
+- **`CardView`** — replaces `CardAttributes`, `MouseController` **and** `BattleController`. Splitting click handling across two controllers by zone is what put selection state on cards but read it from their container (C1). A view now just reports the click.
+- **`BattleSelection`** — one place holding the chosen attacker and target, with the ability to clear and to forget a destroyed card. The real fix for C1.
+
+### Changed
+- `Game.cs` rewritten onto the new model. **The four near-identical card-construction methods collapse into one `CreateView`.**
+- Cards are no longer tagged with their own name, and `FindGameObjectWithTag` is gone — so destroying a card can no longer delete the attacker's own copy (M4) or an arbitrary duplicate (M5).
+- **Supply is now spent** when a card is played, and checked against the real player (C4).
+- **The AI plays from its hand and pays supply**, like the player. It previously scanned its draw pile and never removed what it played (M1). Target choice is now a scoring function that weights `MoraleCost` — the actual win condition, which the old heuristics ignored (M2).
+- Attacks resolve by clicking your card then an enemy card.
+
+### Removed
+`Deck.cs`, `CardAttributes.cs` (and `CardDef`), `MouseController.cs`, `BattleController.cs`, `Assets/celtic.txt`, `Assets/viking.txt`.
+
+### Scene surgery
+Four of the six zones were instances of `Deck.prefab`, so the script swap was applied to the prefab plus two loose scene components — 7 references in total. Stale serialized fields from the old `Game` class were stripped.
+
+### Verified
+- Compile: zero errors. Tests: **17/17 pass**.
+- Scene load-check through `AssetDatabase`/`EditorSceneManager` reported **`problems=0`**: all six zone fields resolve to the right GameObjects (`playerDeck`→`Deck-Player`, `aiHand`→`Hand-Enemy`, …), exactly six `CardZone` components present, **no missing scripts anywhere in the scene**, all `Game` children found, deck assets and card-back sprite loadable.
+
+### Known gaps
+- **No `CardView` prefab.** Views are still built procedurally, but in *one* place instead of four. A prefab is the natural follow-up and would make card visuals designer-editable.
+- Combat is still one-directional — a design question (Q-01), not an oversight.
+- Morale is still overwritten to 1 in `BaseCharacter` defaults and there is still no HUD (M8) — Milestone 3.
+
+---
+
+## 2026-07-28 — Milestone 2, slice 1: the card data model
 
 Branch: `milestone-2-card-identity`. **Additive only — nothing existing was modified, so the game behaves exactly as it did after Milestone 1.**
 

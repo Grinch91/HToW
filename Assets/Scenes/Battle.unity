@@ -498,11 +498,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 392054380}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2ff43a8faa26b58458d030ae34a23f9c, type: 3}
+  m_Script: {fileID: 11500000, guid: 8972a8459d96baf4f9743d0cb663fb2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  deck: []
-  fileContents: []
 --- !u!1 &416924157
 GameObject:
   m_ObjectHideFlags: 0
@@ -796,7 +794,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2ff43a8faa26b58458d030ae34a23f9c, type: 3}
+  m_Script: {fileID: 11500000, guid: 8972a8459d96baf4f9743d0cb663fb2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!4 &838201055 stripped
@@ -814,7 +812,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2ff43a8faa26b58458d030ae34a23f9c, type: 3}
+  m_Script: {fileID: 11500000, guid: 8972a8459d96baf4f9743d0cb663fb2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &854000848
@@ -1640,7 +1638,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2ff43a8faa26b58458d030ae34a23f9c, type: 3}
+  m_Script: {fileID: 11500000, guid: 8972a8459d96baf4f9743d0cb663fb2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &1476790914
@@ -1980,11 +1978,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 1534307905}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2ff43a8faa26b58458d030ae34a23f9c, type: 3}
+  m_Script: {fileID: 11500000, guid: 8972a8459d96baf4f9743d0cb663fb2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  deck: []
-  fileContents: []
 --- !u!1 &1537550224
 GameObject:
   m_ObjectHideFlags: 0
@@ -2196,7 +2192,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2ff43a8faa26b58458d030ae34a23f9c, type: 3}
+  m_Script: {fileID: 11500000, guid: 8972a8459d96baf4f9743d0cb663fb2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &1815973985
@@ -2460,18 +2456,6 @@ MonoBehaviour:
   aiActive: {fileID: 1412569644}
   playerHand: {fileID: 633759843}
   aiHand: {fileID: 838201056}
-  btn: {fileID: 2800000, guid: 4bad6fc9c1c331c4bb453d7c44522283, type: 3}
-  timer: 0
-  timerMax: 5
-  messageTimer: 0
-  tempX: 2
-  tempY: 3
-  n: 0
-  i: 0
-  seperatingCardsAI: 0
-  seperatingCardsPlayer: 0
-  userlist: []
-  enemylist: []
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

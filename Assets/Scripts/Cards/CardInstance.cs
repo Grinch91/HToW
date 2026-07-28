@@ -32,6 +32,13 @@ public class CardInstance
     /// <summary>True once this card has attacked in the current turn. Cleared at turn start.</summary>
     public bool HasAttacked { get; set; }
 
+    /// <summary>
+    /// The GameObject currently showing this card, or null if it is not on screen
+    /// (cards in a draw pile have no view). A convenience link so zones can lay out
+    /// their cards; the model never reads anything back from it.
+    /// </summary>
+    public CardView View { get; set; }
+
     /// <summary>True while this card still has health remaining.</summary>
     public bool IsAlive => CurrentHp > 0;
 
