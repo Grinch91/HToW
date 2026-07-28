@@ -102,9 +102,9 @@ Active-Enemy     ┘
 General-Player   ← art + object exist, NO code references them
 General-Enemy    ←
 playerHealth     ┐
-enemyHealth      ├─ TextMesh HUD elements.
-playerSupply     │  NOTHING in the codebase ever writes to these.
-enemySupply      ┘
+enemyHealth      ├─ HUD *icons* — SpriteRenderers showing hp.png / supplyicon.png.
+playerSupply     │  Not text. No numbers were ever placed beside them, and no code
+enemySupply      ┘  referenced them. The HUD was half-built, not merely unwired.
 ```
 
 Two whole subsystems are visible here as scene objects with **zero backing code**: the Generals, and the entire HUD readout.
@@ -262,9 +262,11 @@ This executes **a full player turn and a full AI turn on every single frame**, f
 
 Despite being implied by scene objects, art, or the project vision:
 
+> **Corrected 2026-07-28 (Milestone 3):** Phase 1 recorded these four objects as `TextMesh`. They are **`SpriteRenderer` icons**. The error came from binary string extraction — the scene did contain `TextMesh`, but on the *message* objects, and the two were conflated. Confirmed by reading the scene as text. Same lesson as bug C5.
+
 | System | Evidence it was intended | Code |
 |---|---|---|
-| HUD (health/supply readout) | 4 TextMesh objects, `hp.png`, `supplyicon.png` | none |
+| HUD (health/supply readout) | 4 icon objects using `hp.png`, `supplyicon.png` | none |
 | Generals / heroes | `General-Player`/`General-Enemy` objects, `celticGeneral.png`, `vikingGeneral.png` | none |
 | Card abilities | `ceffect`: Volley, United, Berserker, Bloodrush | none |
 | Card types | `ctype`: Warrior | none |

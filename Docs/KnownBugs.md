@@ -13,7 +13,9 @@ Legend: **[LOG]** = confirmed by the recorded runtime log. **[STATIC]** = derive
 | **M1 — Real turns** | **C3** (turns at frame rate) · **M6** (turn messages never shown) · **M7** (wrong timer reset) · **F2** (`HasAttacked` never reset) · **N5**, **N8**, **N10** (dead fields/states removed) · **F1** *mitigated* |
 | **M2 — Card identity** | **C1** (selection service replaces `BattleController`) · **C2** (cards move by reference) · **C4** (supply checked against the real player and actually spent) · **C6** (`DrawTop()` guards emptiness) · **M1** (AI plays from its hand and pays supply) · **M2** (AI target choice is a scoring function weighting `MoraleCost`) · **M3**, **M4**, **M5** (no more tags or name-matching) · **N1**, **N2**, **N4**, **N5**, **N6**, **N11**, **F3** |
 | Retracted | **C5** — never a bug, see below |
-| **Still open** | **M8** (no HUD) · **M9** *(moot — `MusicManager` deleted)* · **M10** (morale still not the intended value) · **M11**, **M12** (deck size and the unreachable loss condition) · **N3**, **N7**, **N9** · **F4**, **F5**, **F6** |
+| **M3/M4 — Economy, HUD, winnable battle** | **M8** (HUD shows morale and supply; card stats printed on cards) · **M10** (starting morale is the intended 30) · **M11** (discard pile and reshuffle) · **M12** (decks rebalanced so both sides can lose) · **M9** *(moot — `MusicManager` deleted in M0)* |
+| Retracted | **C5** — never a bug, see below |
+| **Still open** | **N3** (public mutable fields) · **N7** (mixed 2D/3D colliders — now consistent on cards, stale elsewhere) · **N9** *(moot — `FlyTime` deleted)* |
 
 Milestones 3 and 4 close the remainder. Note **F1** is now structurally handled — `CardZone.Snapshot()` exists precisely so attack loops iterate a copy.
 

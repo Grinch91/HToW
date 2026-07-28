@@ -15,7 +15,7 @@ MonoBehaviour:
   id: bondi
   displayName: Bondi
   art: {fileID: 21300000, guid: 8fe5a15bb4e19fa41a799395fb21437c, type: 3}
-  hp: 8
+  hp: 10
   damage: 4
   supplyCost: 4
   moraleCost: 5

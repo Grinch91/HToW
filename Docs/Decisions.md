@@ -100,12 +100,42 @@ Also captured on `CardData`: `Faction`, `CardType` (recovered `ctype`), and `His
 
 ---
 
+## D-09 — Combat retaliation, with Volley as its counterweight
+**2026-07-28 · Accepted** *(answers Q-01)*
+
+**Decision:** when A attacks B, B deals its damage back to A. A destroyed defender still strikes back as it falls. `Volley` is implemented and exempts its bearer from retaliation.
+
+**Why:** without retaliation, attacking was free, so every turn reduced to "attack with everything" and there were no interesting decisions — the project's largest *design* problem, bigger than any bug. Retaliation turns every attack into a trade to evaluate, and because morale is only lost when your own cards die, the answer depends on how each deck is built. That is where depth comes from.
+
+Letting a dying defender still hit back is deliberate: otherwise "kill it first" removes all risk and the mechanic collapses.
+
+**Consequences:** `Volley` had to be implemented alongside it — the only ability so far. Battle Chariot (4 hp, 2 damage) could otherwise never attack anything and survive, making a starter card unplayable. The other three abilities remain unimplemented. Known risk from `GameDesign.md` §3: retaliation can cause board stalls. Watch for it in playtesting; more stall-breaking abilities are the intended remedy.
+
+---
+
+## D-10 — Minimal, traceable balance changes only
+**2026-07-28 · Accepted**
+
+**Decision:** four card changes, each fixing one specific documented fault, plus a deck-size increase to 20 cards per side.
+
+| Change | Fault it fixes |
+|---|---|
+| Fianna cost 4 → 5 | strictly the best card in the game |
+| Bondi hp 8 → 10 | strictly dominated by Ceithern (same statline, lower cost) |
+| Huscarl cost 6 → 5 | 6-cost cards unreachable in a realistic game |
+| Captain cost 6 → 5 | as above |
+
+**Why:** a first balance pass should be small and traceable, so a playtest can attribute any change in feel. Sellsword's 4 hp was left alone deliberately — retaliation already corrects it, since a glass cannon now dies to whatever it hits.
+
+**Consequences:** Celtic is now 20 cards / 107 morale and Viking 20 / 117, against 30 starting morale — so **both sides can now lose**, which was not previously true of Celtic (bug M12). Roughly 5–6 card deaths decide a match. These numbers are a starting point for playtesting, not a finished curve.
+
+---
+
 ## OPEN QUESTIONS — need your decision
 
 These change what gets built. They do not block Milestone 0, which is why the roadmap starts there.
 
-### Q-01 — Combat retaliation? *(blocks Milestone 4)*
-Should a defender deal damage back to its attacker? Currently it does not, which makes attacking free and removes most tactical decision-making. **My recommendation: yes** — it's ~5 lines and it's the cheapest large increase in depth available. Tradeoff: can cause board stalls. See `GameDesign.md` §3.
+### ~~Q-01 — Combat retaliation?~~ → **ANSWERED: yes** (2026-07-28). See D-09.
 
 ### Q-02 — Linear campaigns or run-based structure? *(blocks Milestone 7)*
 The original vision is a linear historical campaign per period. A Hand of Fate–style branching run would give replayability for free, make deckbuilding happen during play, and turn historical events into choice nodes. **My recommendation: run-based**, but this trades away the ability to tell a specific story beat by beat. Genuinely your call — it depends whether replayability or storytelling matters more to you. See `GameDesign.md` §7.

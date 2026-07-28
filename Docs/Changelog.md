@@ -4,6 +4,35 @@ Notable changes to the project. Newest first.
 
 ---
 
+## 2026-07-28 — Milestones 3 & 4 ✅ COMPLETE — the battle is now winnable
+
+Branch: `milestone-3-4-economy-combat`. **This is the milestone where HToW becomes a game.** A battle can be played end to end and won or lost.
+
+### Milestone 3 — the economy made visible
+- **HUD works for the first time.** Morale and supply are shown for both sides and update on every change.
+- **Card stats are printed on the cards** — cost, damage and current health, with wounded cards reading amber. Previously a card's stats were invisible everywhere in the game, so no informed decision was possible.
+- Supply is spent and reported; unaffordable plays explain themselves.
+
+> **Correction:** Phase 1 recorded the four HUD objects as `TextMesh`. They are **`SpriteRenderer` icons** (`hp.png`, `supplyicon.png`). The HUD was *half-built* — icons placed in 2014, numbers never added — not merely unwired. Labels are now created at runtime as children of the icons, reusing the placement already authored. Same root cause as the C5 retraction: a conclusion drawn from binary string extraction. `Architecture.md` §3 corrected.
+
+### Milestone 4 — a battle you can win or lose
+- **Combat retaliation** (Decisions D-09). The defender deals its damage back; a dying defender still strikes as it falls. This is the largest *design* change in the project — attacking is no longer free, so each attack is a trade to evaluate.
+- **`Volley` implemented** — the first working ability, and the designed counterweight to retaliation. Without it Battle Chariot could never attack and survive.
+- **`CombatResolver` extracted** as a plain C# class, so the combat rules are directly testable.
+- **Discard piles and reshuffling.** Destroyed cards go to discard at full health; an empty draw pile reshuffles from it, so no side can run dry permanently (bug M11).
+- **Balance pass** (Decisions D-10): four targeted card fixes, decks to 20 cards each. Celtic 107 morale, Viking 117, against 30 starting — **both sides can now lose**, which was never true of Celtic before (bug M12).
+- **The result screen waits for you** instead of yanking to the menu after five seconds.
+- The AI now declines attacks it scores as a net loss, and its scoring accounts for retaliation.
+
+### Verified
+- Compile clean. **27/27 tests pass**, including 11 new `CombatResolverTests` covering retaliation, the dying-defender rule, Volley exemption, morale swing, and AI scoring rejecting suicidal attacks.
+- Scene/asset check reported **`problems=0`**: HUD anchors present with the right icons, both decks losable and ≥15 cards, all four rebalanced cards carrying the intended values.
+
+### Still open
+`N3`, `N7`, `N9` (minor code hygiene) and the `CardView` prefab. Milestones 5–8 remain.
+
+---
+
 ## 2026-07-28 — Milestone 2, slice 2: rewiring ✅ M2 COMPLETE
 
 **Card identity is now a reference, not a string.** The old model is gone.

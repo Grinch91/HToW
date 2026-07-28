@@ -44,9 +44,6 @@ public class Game : MonoBehaviour
     [Tooltip("Seconds the AI pauses before acting, so the player can follow what it does.")]
     public float aiThinkSeconds = 1.5f;
 
-    [Tooltip("Seconds a win/lose message stays on screen before returning to the main menu.")]
-    public float endGameMessageSeconds = 5.0f;
-
     [Header("Card visuals")]
     public Vector2 cardSize = new Vector2(2.0f, 3.0f);
     public Vector3 cardScale = new Vector3(0.75f, 0.75f, 1.0f);
@@ -65,10 +62,24 @@ public class Game : MonoBehaviour
     GameObject AIWins;
     GameObject AITurn;
 
+    // Discard piles. Created at runtime because they are not displayed and therefore
+    // need no scene anchor; destroyed cards and exhausted draw piles cycle through here.
+    CardZone playerDiscard;
+    CardZone aiDiscard;
+
+    // The HUD objects have existed in Battle.unity since 2014 and nothing ever wrote to
+    // them, so the player could not see their own morale or supply (bug M8). Found by
+    // name because they are scene roots, not children of Game; they become TextMeshPro
+    // with serialized references in the UI pass.
+    TextMesh playerHealthText;
+    TextMesh enemyHealthText;
+    TextMesh playerSupplyText;
+    TextMesh enemySupplyText;
+
     Sprite cardBack;
     bool matchStarted;
     float aiThinkTimer;
-    float endGameTimer;
+    bool awaitingDismissal;
     #endregion
 
 
@@ -91,11 +102,94 @@ public class Game : MonoBehaviour
         playerActive.Configure(ZoneKind.Board, Side.Player);
         aiActive.Configure(ZoneKind.Board, Side.AI);
 
+        playerDiscard = CreateDiscardZone("Discard-Player", Side.Player);
+        aiDiscard = CreateDiscardZone("Discard-Enemy", Side.AI);
+
+        BindHud();
+
         turns.TurnStarted += OnTurnStarted;
         turns.TurnEnded += OnTurnEnded;
 
         BuildDeck(playerDeck, ResolveDeck(playerDeckData, "DeckData/Celtic"), Side.Player);
         BuildDeck(aiDeck, ResolveDeck(aiDeckData, "DeckData/Viking"), Side.AI);
+
+        UpdateHud();
+    }
+
+    CardZone CreateDiscardZone(string zoneName, Side owner)
+    {
+        GameObject obj = new GameObject(zoneName);
+        obj.transform.SetParent(transform, false);
+        CardZone zone = obj.AddComponent<CardZone>();
+        zone.Configure(ZoneKind.DrawPile, owner);
+        return zone;
+    }
+
+    void BindHud()
+    {
+        playerHealthText = FindHudLabel("playerHealth");
+        enemyHealthText = FindHudLabel("enemyHealth");
+        playerSupplyText = FindHudLabel("playerSupply");
+        enemySupplyText = FindHudLabel("enemySupply");
+    }
+
+    // The 2014 scene placed HUD *icons* (hp.png, supplyicon.png) as SpriteRenderers but
+    // never added the numbers beside them — the HUD was half-built, not merely unwired.
+    // Attaching each label as a child of its icon reuses the placement that was already
+    // authored, and avoids editing the scene for something the UI pass will replace with
+    // TextMeshPro anyway.
+    static TextMesh FindHudLabel(string objectName)
+    {
+        GameObject anchor = GameObject.Find(objectName);
+        if (anchor == null)
+        {
+            Debug.LogWarning("HUD anchor '" + objectName + "' not found in scene.");
+            return null;
+        }
+
+        TextMesh existing = anchor.GetComponentInChildren<TextMesh>();
+        if (existing != null)
+        {
+            return existing;
+        }
+
+        GameObject labelObject = new GameObject(objectName + "Label");
+        labelObject.transform.SetParent(anchor.transform, false);
+        labelObject.transform.localPosition = new Vector3(1.4f, 0.0f, -0.1f);
+        labelObject.transform.localScale = Vector3.one;
+
+        TextMesh label = labelObject.AddComponent<TextMesh>();
+        label.anchor = TextAnchor.MiddleLeft;
+        label.alignment = TextAlignment.Left;
+        label.fontSize = 64;
+        label.characterSize = 0.5f;
+        label.color = Color.white;
+
+        SpriteRenderer icon = anchor.GetComponent<SpriteRenderer>();
+        MeshRenderer renderer = labelObject.GetComponent<MeshRenderer>();
+        if (icon != null && renderer != null)
+        {
+            renderer.sortingLayerID = icon.sortingLayerID;
+            renderer.sortingOrder = icon.sortingOrder + 1;
+        }
+
+        return label;
+    }
+
+    void UpdateHud()
+    {
+        SetLabel(playerHealthText, "Morale " + playerInstance.playerMorale);
+        SetLabel(enemyHealthText, "Morale " + enemyInstance.enemyMorale);
+        SetLabel(playerSupplyText, "Supply " + playerInstance.playerSupply + "/" + playerInstance.MaxSupply);
+        SetLabel(enemySupplyText, "Supply " + enemyInstance.enemySupply + "/" + enemyInstance.MaxSupply);
+    }
+
+    static void SetLabel(TextMesh label, string value)
+    {
+        if (label != null)
+        {
+            label.text = value;
+        }
     }
 
     void OnDestroy()
@@ -238,11 +332,23 @@ public class Game : MonoBehaviour
     {
         CardZone pile = side == Side.Player ? playerDeck : aiDeck;
         CardZone hand = side == Side.Player ? playerHand : aiHand;
+        CardZone discard = side == Side.Player ? playerDiscard : aiDiscard;
+
+        // Recycle the discard pile rather than letting a side run dry permanently. The
+        // original 5-card Celtic deck was exhausted by the opening draw and every
+        // subsequent turn logged "Deck is empty" (bug M11).
+        if (pile.IsEmpty && !discard.IsEmpty)
+        {
+            Debug.Log(side + " reshuffles " + discard.Count + " cards from the discard pile");
+            pile.AddRange(discard.Cards);
+            discard.Clear();
+            pile.Shuffle();
+        }
 
         CardInstance card = pile.DrawTop();
         if (card == null)
         {
-            Debug.Log(side + " deck is empty");
+            Debug.Log(side + " has no cards left to draw");
             return;
         }
 
@@ -285,7 +391,7 @@ public class Game : MonoBehaviour
         if (card.View != null)
         {
             card.View.transform.SetParent(board.transform, false);
-            card.View.SetFace(card.Data.Art);
+            card.View.Reveal();
         }
         else
         {
@@ -294,8 +400,10 @@ public class Game : MonoBehaviour
 
         hand.LayOut();
         board.LayOut();
+        UpdateHud();
 
-        Debug.Log(side + " played " + card.Data.DisplayName);
+        Debug.Log(side + " played " + card.Data.DisplayName
+                  + " (" + AvailableSupply(side) + " supply left)");
         return true;
     }
 
@@ -383,6 +491,7 @@ public class Game : MonoBehaviour
 
         selection.Clear();
         RefreshHighlights();
+        UpdateHud();
         aiThinkTimer = 0.0f;
     }
 
@@ -425,22 +534,41 @@ public class Game : MonoBehaviour
 
     void Attack(CardInstance attacker, CardInstance target)
     {
-        Debug.Log(attacker.Data.DisplayName + " attacks " + target.Data.DisplayName);
+        CombatResolver.Result result = CombatResolver.Resolve(attacker, target);
 
-        // Combat is still one-directional: the defender deals no damage back. That is a
-        // design question, not an oversight — see Docs/Decisions.md Q-01.
-        if (target.TakeDamage(attacker.Data.Damage))
+        Debug.Log(attacker.Data.DisplayName + " hits " + target.Data.DisplayName
+                  + " for " + result.DamageToTarget
+                  + (result.DamageToAttacker > 0
+                      ? " and takes " + result.DamageToAttacker + " back"
+                      : " without retaliation (Volley)"));
+
+        // Refresh both cards' printed health before anything is destroyed.
+        if (attacker.View != null) attacker.View.RefreshStats();
+        if (target.View != null) target.View.RefreshStats();
+
+        if (result.TargetDestroyed)
         {
             Destroy(target);
         }
+
+        if (result.AttackerDestroyed)
+        {
+            Destroy(attacker);
+        }
+
+        UpdateHud();
     }
 
     void Destroy(CardInstance card)
     {
         CardZone board = card.Owner == Side.Player ? playerActive : aiActive;
+        CardZone discard = card.Owner == Side.Player ? playerDiscard : aiDiscard;
+
         board.Remove(card);
 
         // Morale is lost by the card's OWNER, in proportion to how valuable it was.
+        // This is the game's most distinctive rule: you are not damaged by being
+        // attacked, you are damaged by losing your own people.
         if (card.Owner == Side.Player)
         {
             playerInstance.playerMorale -= card.Data.MoraleCost;
@@ -453,9 +581,13 @@ public class Game : MonoBehaviour
         Debug.Log(card.Data.DisplayName + " destroyed; " + card.Owner
                   + " loses " + card.Data.MoraleCost + " morale");
 
+        card.Heal();          // returns to the discard pile at full strength
+        discard.Add(card);
+
         selection.Forget(card);
         DestroyView(card);
         board.LayOut();
+        UpdateHud();
 
         CheckForWinner();
     }
@@ -471,13 +603,13 @@ public class Game : MonoBehaviour
         {
             turns.EndMatch();
             ShowOnly(AIWins);
-            endGameTimer = 0.0f;
+            awaitingDismissal = true;
         }
         else if (enemyInstance.enemyMorale <= 0)
         {
             turns.EndMatch();
             ShowOnly(PlayerWins);
-            endGameTimer = 0.0f;
+            awaitingDismissal = true;
         }
     }
     #endregion
@@ -533,23 +665,25 @@ public class Game : MonoBehaviour
     CardInstance ChooseAiTarget(CardInstance attacker)
     {
         CardInstance best = null;
-        int bestScore = int.MinValue;
+        int bestScore = 0;   // never take an attack scored as a net loss
 
         foreach (CardInstance candidate in playerActive.Cards)
         {
-            // Prefer a kill, weighted by the morale it costs the player; otherwise
-            // prefer removing the biggest threat. The old version applied two rules
-            // with no scoring, so the LAST matching card won rather than the best one,
-            // and it ignored morale entirely — the actual win condition.
-            int score = candidate.CurrentHp <= attacker.Data.Damage
-                ? 100 + (candidate.Data.MoraleCost * 10)
-                : candidate.Data.Damage;
-
+            // Scoring lives in CombatResolver so the AI is judged by the same rules the
+            // player plays under, retaliation included. The old version applied two
+            // ungraded heuristics, so the LAST matching card won rather than the best
+            // one, and it ignored MoraleCost entirely — the actual win condition.
+            int score = CombatResolver.Score(attacker, candidate);
             if (score > bestScore)
             {
                 bestScore = score;
                 best = candidate;
             }
+        }
+
+        if (best == null)
+        {
+            Debug.Log(attacker.Data.DisplayName + " holds back — no attack worth making");
         }
 
         return best;
@@ -587,8 +721,9 @@ public class Game : MonoBehaviour
 
         if (turns.Phase == TurnPhase.GameOver)
         {
-            endGameTimer += Time.deltaTime;
-            if (endGameTimer >= endGameMessageSeconds)
+            // The result used to be yanked away after five seconds. Let the player sit
+            // with it and dismiss it themselves. See Docs/GameDesign.md section 8.
+            if (awaitingDismissal && (Input.anyKeyDown || Input.GetMouseButtonDown(0)))
             {
                 SceneManager.LoadScene("MainMenu");
             }
