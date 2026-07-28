@@ -1,0 +1,57 @@
+# ---- Unity generated folders ----
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# Asset Store tools
+/[Aa]ssets/AssetStoreTools*
+/[Aa]ssets/Plugins/Editor/JetBrains*
+
+# ---- Build output ----
+# The 2014 standalone build was previously committed. It was built from a
+# different revision than the source (see Docs/Architecture.md section 10)
+# and is ~96% of the repo size. Never commit build output again.
+/HToW.exe
+/HToW_Data/
+*.exe
+*.pdb
+*.mdb
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# ---- IDE ----
+.vs/
+.idea/
+.vscode/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.tmp
+*.svd
+*.opendb
+*.VC.db
+
+# ---- OS junk ----
+# Three Thumbs.db files were previously committed inside Assets/.
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+._*
+
+# ---- Cloud-sync conflict artifacts ----
+# This project was developed in Dropbox; conflict copies of a scene and a log
+# were committed in 2014 and are unmergeable under binary serialization.
+*conflicted copy*
+*Conflict*
