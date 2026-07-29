@@ -1,41 +1,54 @@
 using UnityEngine;
 
 /// <summary>
-/// The GameObject side of a card: sprite, collider, and click handling.
+/// The GameObject side of a card.
 ///
-/// Replaces three scripts at once — <c>CardAttributes</c> (held the data),
-/// <c>MouseController</c> (clicks in hand) and <c>BattleController</c> (clicks in
-/// play). Splitting behaviour across two controllers by zone meant selection state
-/// lived on individual cards but was read from their container, which is exactly why
-/// combat threw a NullReferenceException on the first attack (bug C1).
+/// A card is composed rather than drawn: the illustration sits at the back, a generated
+/// faction frame overlays it, and the stats sit on top in fixed positions. Nothing here
+/// is loaded from an art file — the frames, badges and ring all come from
+/// <see cref="ProceduralArt"/>, which is what makes the visual identity free to produce
+/// and instant to recolour.
 ///
-/// A view now simply reports the click. Deciding what it means is the game's job.
+/// Replaces three 2014 scripts at once: CardAttributes held the data, MouseController
+/// handled clicks in hand and BattleController handled clicks in play. Splitting
+/// behaviour by zone is what put selection state on cards but read it from their
+/// container, which threw on the first attack.
 /// </summary>
 [RequireComponent(typeof(SpriteRenderer))]
 [RequireComponent(typeof(BoxCollider2D))]
 public class CardView : MonoBehaviour
 {
-    private SpriteRenderer spriteRenderer;
+    // Layout positions in card-local units. The card is 5.12 x 7.44, centred on origin,
+    // so these track the regions cut into the frame texture.
+    private static readonly Vector3 CostAt = new Vector3(-2.02f, 3.02f, -0.10f);
+    private static readonly Vector3 MoraleAt = new Vector3(2.02f, 2.92f, -0.10f);
+    private static readonly Vector3 StrikeAt = new Vector3(-1.72f, -2.86f, -0.10f);
+    private static readonly Vector3 StandAt = new Vector3(1.72f, -2.86f, -0.10f);
+    private const float NameY = -1.93f;
+    private const float KeywordY = -2.32f;
+
+    private SpriteRenderer portrait;
+    private SpriteRenderer frame;
+    private SpriteRenderer readyRing;
     private Game game;
-    private TextMesh costLabel;
-    private TextMesh damageLabel;
-    private TextMesh healthLabel;
+
+    private TextMesh costText, moraleText, strikeText, standText, nameText, keywordText;
+    private Vector3 restingScale;
+    private bool scaleCaptured;
+    private bool built;
 
     /// <summary>The card this view shows. Null until <see cref="Bind"/> is called.</summary>
     public CardInstance Instance { get; private set; }
 
-    /// <summary>
-    /// Attaches this view to a card. <paramref name="faceDown"/> hides the face for the
-    /// opponent's hand.
-    /// </summary>
+    /// <summary>Attaches this view to a card. Face-down hides everything but the back.</summary>
     public void Bind(CardInstance instance, Game owner, Sprite face, bool faceDown)
     {
         Instance = instance;
         game = owner;
         instance.View = this;
 
-        spriteRenderer = GetComponent<SpriteRenderer>();
-        spriteRenderer.sprite = face;
+        portrait = GetComponent<SpriteRenderer>();
+        portrait.sprite = face;
 
         name = faceDown ? "Card (hidden)" : instance.Data.DisplayName;
 
@@ -49,76 +62,16 @@ public class CardView : MonoBehaviour
             collider.size = face.bounds.size;
         }
 
-        // Face-down cards are the opponent's hand and must not be clickable.
         collider.enabled = !faceDown;
 
         if (!faceDown)
         {
-            BuildStatLabels();
+            BuildFace();
             RefreshStats();
         }
     }
 
-    // Card art is a flat image with no stats drawn on it, so until Milestone 2 a card's
-    // cost, damage and health were invisible to the player everywhere in the game. There
-    // was no way to make an informed decision about anything. These labels are a
-    // deliberately plain stand-in; the proper card frame (Resources/cardfront.png exists
-    // and is unused) belongs with the UI pass.
-    private void BuildStatLabels()
-    {
-        if (costLabel != null)
-        {
-            return;
-        }
-
-        costLabel = CreateLabel("Cost", new Vector3(-0.55f, 0.85f, -0.1f), TextAnchor.UpperLeft);
-        damageLabel = CreateLabel("Damage", new Vector3(-0.55f, -0.85f, -0.1f), TextAnchor.LowerLeft);
-        healthLabel = CreateLabel("Health", new Vector3(0.55f, -0.85f, -0.1f), TextAnchor.LowerRight);
-    }
-
-    private TextMesh CreateLabel(string labelName, Vector3 localPosition, TextAnchor anchor)
-    {
-        GameObject obj = new GameObject(labelName);
-        obj.transform.SetParent(transform, false);
-        obj.transform.localPosition = localPosition;
-        obj.transform.localScale = Vector3.one * 0.35f;
-
-        TextMesh text = obj.AddComponent<TextMesh>();
-        text.anchor = anchor;
-        text.alignment = TextAlignment.Center;
-        text.fontSize = 48;
-        text.characterSize = 0.2f;
-        text.color = Color.white;
-
-        MeshRenderer renderer = obj.GetComponent<MeshRenderer>();
-        renderer.sortingLayerID = spriteRenderer.sortingLayerID;
-        renderer.sortingOrder = spriteRenderer.sortingOrder + 1;
-
-        return text;
-    }
-
-    /// <summary>Refreshes the printed stats. Called whenever the card takes damage.</summary>
-    public void RefreshStats()
-    {
-        if (Instance == null || costLabel == null)
-        {
-            return;
-        }
-
-        costLabel.text = Instance.Data.SupplyCost.ToString();
-        damageLabel.text = Instance.Data.Damage.ToString();
-        healthLabel.text = Instance.CurrentHp.ToString();
-
-        // Wounded cards read amber so damage is visible at a glance.
-        healthLabel.color = Instance.CurrentHp < Instance.Data.Hp
-            ? new Color(1.0f, 0.6f, 0.2f)
-            : Color.white;
-    }
-
-    /// <summary>
-    /// Turns a face-down card face up — used when the AI plays a card out of its hidden
-    /// hand onto the board, where it becomes public information.
-    /// </summary>
+    /// <summary>Turns a face-down card face up, used when the AI plays from its hidden hand.</summary>
     public void Reveal()
     {
         if (Instance == null)
@@ -126,33 +79,143 @@ public class CardView : MonoBehaviour
             return;
         }
 
-        if (spriteRenderer != null)
+        if (portrait != null)
         {
-            spriteRenderer.sprite = Instance.Data.Art;
+            portrait.sprite = Instance.Data.Art;
         }
 
         name = Instance.Data.DisplayName;
         GetComponent<BoxCollider2D>().enabled = true;
 
-        BuildStatLabels();
+        BuildFace();
         RefreshStats();
     }
 
-    private Vector3 restingScale;
-    private bool scaleCaptured;
+    //Composition
+    #region
+
+    private void BuildFace()
+    {
+        if (built)
+        {
+            return;
+        }
+
+        built = true;
+
+        Faction faction = Instance.Data.Faction;
+        int baseOrder = portrait != null ? portrait.sortingOrder : 0;
+
+        readyRing = AddLayer("ReadyRing", ProceduralArt.ReadyRing(), Vector3.forward * 0.05f, baseOrder - 1);
+        readyRing.enabled = false;
+
+        frame = AddLayer("Frame", ProceduralArt.CardFrame(faction), new Vector3(0f, 0f, -0.05f), baseOrder + 1);
+
+        AddLayer("Cost", ProceduralArt.CostBadge(faction), CostAt, baseOrder + 2);
+        AddLayer("Morale", ProceduralArt.MoraleBanner(), MoraleAt, baseOrder + 2);
+        AddLayer("Strike", ProceduralArt.StatPlate(faction), StrikeAt, baseOrder + 2);
+        AddLayer("Stand", ProceduralArt.StatPlate(faction), StandAt, baseOrder + 2);
+
+        costText = AddText("CostText", CostAt + (Vector3.back * 0.05f), 0.085f, Palette.BogOak, baseOrder + 3);
+        moraleText = AddText("MoraleText", MoraleAt + new Vector3(0f, 0.12f, -0.05f), 0.075f, Palette.Vellum, baseOrder + 3);
+        strikeText = AddText("StrikeText", StrikeAt + (Vector3.back * 0.05f), 0.075f, Palette.Ink, baseOrder + 3);
+        standText = AddText("StandText", StandAt + (Vector3.back * 0.05f), 0.075f, Palette.Ink, baseOrder + 3);
+
+        nameText = AddText("NameText", new Vector3(0f, NameY, -0.15f), 0.055f, Palette.Vellum, baseOrder + 3);
+        nameText.text = Instance.Data.DisplayName;
+
+        keywordText = AddText("KeywordText", new Vector3(0f, KeywordY, -0.15f), 0.032f, Palette.InkSoft, baseOrder + 3);
+        keywordText.text = KeywordLine(Instance.Data);
+    }
+
+    private SpriteRenderer AddLayer(string layerName, Sprite sprite, Vector3 localPosition, int order)
+    {
+        GameObject obj = new GameObject(layerName);
+        obj.transform.SetParent(transform, false);
+        obj.transform.localPosition = localPosition;
+
+        SpriteRenderer renderer = obj.AddComponent<SpriteRenderer>();
+        renderer.sprite = sprite;
+        renderer.sortingLayerID = portrait != null ? portrait.sortingLayerID : 0;
+        renderer.sortingOrder = order;
+        return renderer;
+    }
+
+    private TextMesh AddText(string textName, Vector3 localPosition, float size, Color colour, int order)
+    {
+        GameObject obj = new GameObject(textName);
+        obj.transform.SetParent(transform, false);
+        obj.transform.localPosition = localPosition;
+
+        TextMesh mesh = obj.AddComponent<TextMesh>();
+        mesh.anchor = TextAnchor.MiddleCenter;
+        mesh.alignment = TextAlignment.Center;
+        mesh.fontSize = 72;
+        mesh.characterSize = size;
+        mesh.color = colour;
+
+        Font display = Resources.Load<Font>("carolingia");
+        if (display != null)
+        {
+            mesh.font = display;
+            MeshRenderer meshRenderer = obj.GetComponent<MeshRenderer>();
+            meshRenderer.sharedMaterial = display.material;
+        }
+
+        MeshRenderer r = obj.GetComponent<MeshRenderer>();
+        r.sortingLayerID = portrait != null ? portrait.sortingLayerID : 0;
+        r.sortingOrder = order;
+        return mesh;
+    }
+
+    // Keyword plus the honesty mark. Distinguishing recorded history from saga and from
+    // invention is a stated goal of the project, and putting it on the card costs nothing.
+    private static string KeywordLine(CardData data)
+    {
+        string keyword = "";
+        foreach (CardAbility ability in data.Abilities)
+        {
+            if (ability != CardAbility.None)
+            {
+                keyword += ability.ToString().ToUpperInvariant() + " ";
+            }
+        }
+
+        string mark;
+        switch (data.Historicity)
+        {
+            case Historicity.Mythological: mark = "MYTH"; break;
+            case Historicity.Fictional: mark = "INVENTED"; break;
+            default: mark = "FACT"; break;
+        }
+
+        return keyword.Length > 0 ? keyword.Trim() + "  ·  " + mark : mark;
+    }
+    #endregion
+
+    /// <summary>Refreshes the printed stats. Called whenever the card takes damage.</summary>
+    public void RefreshStats()
+    {
+        if (Instance == null || costText == null)
+        {
+            return;
+        }
+
+        costText.text = Instance.Data.SupplyCost.ToString();
+        moraleText.text = Instance.Data.MoraleCost.ToString();
+        strikeText.text = Instance.Data.Damage.ToString();
+        standText.text = Instance.CurrentHp.ToString();
+
+        // A wounded unit reads in madder — the colour reserved for loss.
+        standText.color = Instance.CurrentHp < Instance.Data.Hp ? Palette.Madder : Palette.Ink;
+    }
 
     /// <summary>
-    /// Marks the card as the current attacker or target. Colour alone proved hard to
-    /// read against varied card art, so a selected card also lifts slightly and draws
-    /// in front of its neighbours.
+    /// Marks the card as the current attacker or target. Colour alone proved hard to read
+    /// against varied card art, so a selected card also lifts and draws in front.
     /// </summary>
     public void SetHighlight(Color colour)
     {
-        if (spriteRenderer != null)
-        {
-            spriteRenderer.color = colour;
-        }
-
         if (!scaleCaptured)
         {
             restingScale = transform.localScale;
@@ -160,12 +223,37 @@ public class CardView : MonoBehaviour
         }
 
         bool selected = colour != Color.white;
-        transform.localScale = selected ? restingScale * 1.12f : restingScale;
 
-        if (spriteRenderer != null)
+        if (portrait != null)
         {
-            spriteRenderer.sortingOrder = selected ? 100 : 0;
+            portrait.color = colour;
+            portrait.sortingOrder = selected ? 100 : 0;
         }
+
+        transform.localScale = selected ? restingScale * 1.12f : restingScale;
+    }
+
+    /// <summary>
+    /// Shows the gold ring when this unit still has an attack available.
+    ///
+    /// Dimming a spent card only tells the player what they have already done. The ring
+    /// tells them what they can still do, which is the question they actually have.
+    /// </summary>
+    public void SetReady(bool ready)
+    {
+        if (readyRing != null)
+        {
+            readyRing.enabled = ready;
+        }
+    }
+
+    /// <summary>Dims a card that has already attacked this turn.</summary>
+    public void SetSpent(bool spent)
+    {
+        Color tint = spent ? new Color(0.55f, 0.55f, 0.60f) : Color.white;
+
+        if (portrait != null) portrait.color = tint;
+        if (frame != null) frame.color = tint;
     }
 
     private void OnMouseDown()
@@ -180,8 +268,7 @@ public class CardView : MonoBehaviour
     #region
 
     // Cards used to appear and vanish with no acknowledgement at all: an attack was a
-    // silent number change and a death was a card blinking out of existence. Nothing
-    // told the player that anything had happened, let alone what.
+    // silent number change and a death was a card blinking out of existence.
 
     /// <summary>Lunges toward a point and back. Purely cosmetic.</summary>
     public void PlayAttack(Vector3 worldTarget)
@@ -216,7 +303,7 @@ public class CardView : MonoBehaviour
         transform.position = start;
     }
 
-    /// <summary>Flashes red and floats the damage figure upward.</summary>
+    /// <summary>Flashes and floats the damage figure upward.</summary>
     public void PlayHit(int damage)
     {
         RefreshStats();
@@ -224,24 +311,24 @@ public class CardView : MonoBehaviour
         if (isActiveAndEnabled)
         {
             StartCoroutine(HitRoutine());
-            SpawnFloatingNumber("-" + damage, new Color(1f, 0.35f, 0.30f));
+            SpawnFloatingNumber("-" + damage, Palette.Madder);
         }
     }
 
     private System.Collections.IEnumerator HitRoutine()
     {
-        if (spriteRenderer == null)
+        if (portrait == null)
         {
             yield break;
         }
 
-        Color original = spriteRenderer.color;
+        Color original = portrait.color;
 
         for (int flash = 0; flash < 2; flash++)
         {
-            spriteRenderer.color = new Color(1f, 0.4f, 0.4f);
+            portrait.color = Palette.Madder;
             yield return new WaitForSeconds(0.06f);
-            spriteRenderer.color = original;
+            portrait.color = original;
             yield return new WaitForSeconds(0.05f);
         }
     }
@@ -252,11 +339,15 @@ public class CardView : MonoBehaviour
     /// </summary>
     public void PlayDeathThenDestroy()
     {
-        // Stop responding to clicks the moment it is dying.
         BoxCollider2D collider = GetComponent<BoxCollider2D>();
         if (collider != null)
         {
             collider.enabled = false;
+        }
+
+        if (readyRing != null)
+        {
+            readyRing.enabled = false;
         }
 
         if (isActiveAndEnabled)
@@ -272,9 +363,10 @@ public class CardView : MonoBehaviour
     private System.Collections.IEnumerator DeathRoutine()
     {
         Vector3 startScale = transform.localScale;
-        Color startColour = spriteRenderer != null ? spriteRenderer.color : Color.white;
-
         const float duration = 0.45f;
+
+        SpriteRenderer[] layers = GetComponentsInChildren<SpriteRenderer>();
+        TextMesh[] texts = GetComponentsInChildren<TextMesh>();
 
         for (float t = 0f; t < duration; t += Time.deltaTime)
         {
@@ -283,30 +375,24 @@ public class CardView : MonoBehaviour
             transform.localScale = Vector3.Lerp(startScale, startScale * 0.55f, k);
             transform.Rotate(0f, 0f, 220f * Time.deltaTime);
 
-            if (spriteRenderer != null)
+            foreach (SpriteRenderer layer in layers)
             {
-                Color fading = Color.Lerp(startColour, new Color(0.4f, 0.1f, 0.1f, 0f), k);
-                spriteRenderer.color = fading;
+                Color c = layer.color;
+                c.a = 1f - k;
+                layer.color = c;
+            }
+
+            foreach (TextMesh text in texts)
+            {
+                Color c = text.color;
+                c.a = 1f - k;
+                text.color = c;
             }
 
             yield return null;
         }
 
         Destroy(gameObject);
-    }
-
-    /// <summary>
-    /// Dims a card that has already attacked this turn, so it is obvious at a glance
-    /// which units still have an action available.
-    /// </summary>
-    public void SetSpent(bool spent)
-    {
-        if (spriteRenderer == null || Instance == null)
-        {
-            return;
-        }
-
-        spriteRenderer.color = spent ? new Color(0.55f, 0.55f, 0.60f) : Color.white;
     }
 
     private void SpawnFloatingNumber(string text, Color colour)
@@ -322,9 +408,9 @@ public class CardView : MonoBehaviour
         mesh.anchor = TextAnchor.MiddleCenter;
 
         MeshRenderer renderer = obj.GetComponent<MeshRenderer>();
-        if (renderer != null && spriteRenderer != null)
+        if (renderer != null && portrait != null)
         {
-            renderer.sortingLayerID = spriteRenderer.sortingLayerID;
+            renderer.sortingLayerID = portrait.sortingLayerID;
             renderer.sortingOrder = 200;
         }
 

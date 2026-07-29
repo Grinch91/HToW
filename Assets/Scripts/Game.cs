@@ -129,6 +129,7 @@ public class Game : MonoBehaviour
 
         BindHud();
         BindCommanders();
+        DressBoard();
 
         turns.TurnStarted += OnTurnStarted;
         turns.TurnEnded += OnTurnEnded;
@@ -146,6 +147,39 @@ public class Game : MonoBehaviour
         CardZone zone = obj.AddComponent<CardZone>();
         zone.Configure(ZoneKind.DrawPile, owner);
         return zone;
+    }
+
+    // Replaces the 2014 tiled board texture with the generated bog-oak surface, and lays
+    // a strip behind each side's commander so the HUD reads as one band rather than two
+    // floating icons.
+    void DressBoard()
+    {
+        GameObject background = GameObject.Find("Background");
+        if (background != null)
+        {
+            SpriteRenderer renderer = background.GetComponent<SpriteRenderer>();
+            if (renderer != null)
+            {
+                renderer.sprite = ProceduralArt.BoardSurface();
+                renderer.color = Color.white;
+                background.transform.localScale = new Vector3(11.0f, 11.0f, 1.0f);
+            }
+        }
+
+        AddHudStrip("HudStrip-Player", -12.6f, Palette.Verdigris);
+        AddHudStrip("HudStrip-Enemy", 12.6f, Palette.Woad);
+    }
+
+    void AddHudStrip(string stripName, float y, Color edge)
+    {
+        GameObject obj = new GameObject(stripName);
+        obj.transform.SetParent(transform, false);
+        obj.transform.position = new Vector3(0f, y, 1.5f);
+        obj.transform.localScale = new Vector3(0.85f, 0.048f, 1f);
+
+        SpriteRenderer renderer = obj.AddComponent<SpriteRenderer>();
+        renderer.sprite = ProceduralArt.Plate(new Color(0.09f, 0.07f, 0.05f, 0.92f), edge);
+        renderer.sortingOrder = -5;
     }
 
     // The General objects have carried artwork and no code since 2014. They now serve as
@@ -396,11 +430,16 @@ public class Game : MonoBehaviour
             else
             {
                 card.View.SetHighlight(Color.white);
-
-                // A unit that has already swung is dimmed, so it is obvious at a glance
-                // which of your cards still have an action available.
                 card.View.SetSpent(card.HasAttacked);
             }
+
+            // The gold ring answers the question the player actually has — what can I
+            // still do this turn — rather than dimming telling them what they already did.
+            card.View.SetReady(
+                turns.ActiveSide == Side.Player
+                && turns.Phase == TurnPhase.Main
+                && !card.HasAttacked
+                && pendingActions.Count == 0);
         }
 
         foreach (CardInstance card in aiActive.Cards)
