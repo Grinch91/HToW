@@ -15,8 +15,8 @@ MonoBehaviour:
   id: battlechariot
   displayName: Battle Chariot
   art: {fileID: 21300000, guid: d5c6c17f11fa38e48b5c15c4a2fa6a1d, type: 3}
-  hp: 4
-  damage: 2
+  hp: 5
+  damage: 3
   supplyCost: 1
   moraleCost: 2
   faction: 0

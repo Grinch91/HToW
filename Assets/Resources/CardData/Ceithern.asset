@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Ceithern
   art: {fileID: 21300000, guid: 1e19abdf4291df54eb89fc8080128cbd, type: 3}
   hp: 8
-  damage: 4
+  damage: 5
   supplyCost: 3
   moraleCost: 6
   faction: 0

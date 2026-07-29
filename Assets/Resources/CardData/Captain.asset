@@ -17,7 +17,7 @@ MonoBehaviour:
   art: {fileID: 21300000, guid: 9338f31e67f01914a95e10a59558b70d, type: 3}
   hp: 15
   damage: 10
-  supplyCost: 5
+  supplyCost: 6
   moraleCost: 10
   faction: 2
   cardType: 0

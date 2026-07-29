@@ -148,6 +148,58 @@ Letting a dying defender still hit back is deliberate: otherwise "kill it first"
 
 ---
 
+## D-12 — Supply refills each turn; starting morale is 50
+**2026-07-29 · Accepted**
+
+**Decision:** supply refills to a ceiling that grows by one per turn (to a max of 10) rather than accumulating unspent points. Starting morale rises from 30 to 50.
+
+**Why — measured, not argued.** A 4,000-match simulation of the previous rules found:
+- **Every 5-cost card went unplayed in every single match.** Fianna, Huscarl and Captain — a third of the roster — were dead cards. With accumulating supply there is always a 1-cost card worth playing, so nothing is ever banked and supply never rose above about three.
+- After switching to refill, all nine cards saw play, but **28–51% of matches ended as mutual destruction**: retaliation destroys both cards in an exchange, so with a 30 morale pool against ~100 morale of deck, both sides crossed zero together within ten turns.
+
+At 50 morale a match runs ~14 turns, draws fall to 2–5%, and mirror matches sit at 48–50% — the sanity check that says the rules themselves are not biased.
+
+**Consequences:** cost is now a real decision, because turn number rather than hoarding governs what you can afford. Unspent supply is lost, which adds a small "use it or lose it" tension. Both are standard for the genre and both improved the measurements.
+
+---
+
+## D-13 — Balance by simulation, not by inspection
+**2026-07-29 · Accepted**
+
+**Decision:** card and deck balance is driven by `MatchSimulator` + `BalanceReport` (menu: **HToW → Run Balance Report**), which plays thousands of AI-vs-AI matches and reports win rates, draw rates, match length and per-card kill/death ratios.
+
+**Why:** the interaction of a supply curve, a morale pool and retaliation is not something that can be judged by reading a stat table. Every balance conclusion in `CardSystem.md` §3 was written before retaliation existed and several were wrong once it landed.
+
+**Method:** mirror matches are run first as a control. A deck against itself must sit near 50% — if it does not, the rules or the simulator are biased and every other figure is meaningless. That check caught a real defect: the simulator initially restated `StartingMorale` as its own constant, so a change to `BaseCharacter` silently did not reach it and a whole run reported figures for the old value. It now derives every rule constant from `BaseCharacter`. **Derive, never restate.**
+
+**Result of the first pass** — Celtic vs Viking moved 28.4% → 32.1% → 39.1% → **47.1%** across four measured iterations:
+
+| Change | Reason |
+|---|---|
+| Huscarl 5 → 6 supply | k/d 1.98, the strongest card; should cost the most |
+| Captain 5 → 6 supply | k/d 1.66 |
+| Battle Chariot 2 → 3 damage, 4 → 5 hp | k/d 0.27, the weakest card |
+| Ceithern 4 → 5 damage | k/d 0.76, Celtic's mid-curve card |
+| MercArcher gains **Volley** | k/d 0.28. It is literally an archer; it had no ability only because no 2014 `ceffect` data survived for the mercenaries |
+| Celtic deck: −1 Chariot, −1 MercArcher, +1 Fianna, +1 Sellsword | Celtic was 40% chaff against Viking's 15% |
+
+**Known limitation:** the report pools statistics for cards that appear in both decks (MercArcher, Sellsword, Captain), so their figures cannot be attributed to a side. Per-side tracking is the obvious next improvement.
+
+---
+
+## D-14 — Celtic's faction identity is blocked on an unimplemented ability
+**2026-07-29 · Noted, not yet actioned**
+
+**Observation:** retaliation makes cheap low-stat units close to worthless — they die to anything and rarely trade. Measured k/d: MercArcher **0.26**, Battle Chariot **0.67**, against Fianna 1.77 and Huscarl 1.72.
+
+That directly undermines the faction identity proposed in `GameDesign.md` §5, where Celtic is *"kin-networks… cheap numerous units"*. Under the current rules, numerous cheap units is simply a bad strategy, and the balance pass above fixed Celtic partly by making it **less** numerous — the opposite of its intended character.
+
+**The mechanic that would fix this already exists on paper.** `United` — stronger for each other friendly unit of the same type — is exactly what makes a swarm viable, and it is already authored on Ceithern and Bondi. Celtic's identity is therefore blocked on implementing one of the four recovered abilities.
+
+**Recommendation:** implement `United` before the next balance pass, then re-run the report and rebuild Celtic around numbers rather than elites. Until then, Celtic is balanced but not yet *characterful*.
+
+---
+
 ## OPEN QUESTIONS — need your decision
 
 These change what gets built. They do not block Milestone 0, which is why the roadmap starts there.

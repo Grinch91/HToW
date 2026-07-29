@@ -11,7 +11,13 @@ public class BaseCharacter{
 
 	public BaseCharacter()
 	{
-		startMorale = 30;
+		// 30 was measurably too low once retaliation landed. A deck totals around 100
+		// morale, and since retaliation usually destroys both cards in an exchange, both
+		// sides drained to zero within about ten turns — 28% to 51% of simulated matches
+		// ended as mutual destruction rather than a win. At 50 a match runs long enough
+		// for the supply curve to matter and for the result to be earned.
+		// See Docs/Decisions.md D-12.
+		startMorale = 50;
 		startSupply = 2;
 		maxSupply = 10;
 		currentDeck = "";

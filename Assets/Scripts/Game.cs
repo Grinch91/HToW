@@ -494,21 +494,31 @@ public class Game : MonoBehaviour
         }
     }
 
+    // Supply refills to a ceiling that grows by one per turn, rather than accumulating
+    // whatever was left over.
+    //
+    // Accumulating was measurably broken. Simulation over 4,000 matches showed supply
+    // never rising above about three, because there is always a 1-cost card worth
+    // playing and spending it leaves nothing banked. Every 5-cost card — Fianna,
+    // Huscarl, Captain — went unplayed in every single match, so a third of the roster
+    // was dead and card cost barely mattered.
+    //
+    // Refilling makes the turn number the real constraint: on turn five you command five
+    // supply whatever you did on turn four, so expensive cards arrive on schedule and
+    // cost becomes a genuine decision. See Docs/Decisions.md D-12.
     void GainSupply(Side side)
     {
         if (side == Side.Player)
         {
-            if (playerInstance.playerSupply < playerInstance.MaxSupply)
-            {
-                playerInstance.playerSupply++;
-            }
+            playerInstance.playerSupplyCap =
+                Mathf.Min(playerInstance.playerSupplyCap + 1, playerInstance.MaxSupply);
+            playerInstance.playerSupply = playerInstance.playerSupplyCap;
         }
         else
         {
-            if (enemyInstance.enemySupply < enemyInstance.MaxSupply)
-            {
-                enemyInstance.enemySupply++;
-            }
+            enemyInstance.enemySupplyCap =
+                Mathf.Min(enemyInstance.enemySupplyCap + 1, enemyInstance.MaxSupply);
+            enemyInstance.enemySupply = enemyInstance.enemySupplyCap;
         }
     }
     #endregion
@@ -638,17 +648,27 @@ public class Game : MonoBehaviour
             return;
         }
 
-        if (playerInstance.playerMorale <= 0)
+        bool playerBroken = playerInstance.playerMorale <= 0;
+        bool enemyBroken = enemyInstance.enemyMorale <= 0;
+
+        if (!playerBroken && !enemyBroken)
         {
-            turns.EndMatch();
-            ShowOnly(AIWins);
-            awaitingDismissal = true;
+            return;
         }
-        else if (enemyInstance.enemyMorale <= 0)
+
+        turns.EndMatch();
+        awaitingDismissal = true;
+
+        // Retaliation can push both sides past zero on the same exchange. Whoever is
+        // less far past it has held out longer and takes the win; the player is given
+        // an exact tie. Matches the rule the balance simulator uses.
+        if (playerBroken && enemyBroken)
         {
-            turns.EndMatch();
-            ShowOnly(PlayerWins);
-            awaitingDismissal = true;
+            ShowOnly(playerInstance.playerMorale >= enemyInstance.enemyMorale ? PlayerWins : AIWins);
+        }
+        else
+        {
+            ShowOnly(playerBroken ? AIWins : PlayerWins);
         }
     }
     #endregion
