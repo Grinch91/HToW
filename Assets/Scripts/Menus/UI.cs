@@ -32,14 +32,14 @@ public class UI : MonoBehaviour
     private DeckValidator.Result validation;
     private string statusMessage = "";
 
-    void Start()
-    {
-        this.currentGUIMethod = MainMenu;
-    }
-
+    // Nothing is drawn until the deckbuilder is opened. The main and battle menus moved
+    // to MenuUI, which builds them in uGUI; this class is now only the deckbuilder.
     void OnGUI()
     {
-        this.currentGUIMethod();
+        if (this.currentGUIMethod != null)
+        {
+            this.currentGUIMethod();
+        }
     }
 
     //Layout helpers
@@ -142,58 +142,12 @@ public class UI : MonoBehaviour
     }
     #endregion
 
-    //Main menu
-    #region
-    public void MainMenu()
-    {
-        DrawBackground();
-        DrawBanner();
-
-        if (MenuButton(0, 3, "Battle Mode"))
-        {
-            this.currentGUIMethod = BattleMenu;
-        }
-
-        if (MenuButton(1, 3, "Cards"))
-        {
-            OpenDeckBuilder();
-        }
-
-        if (MenuButton(2, 3, "Exit"))
-        {
-            Application.Quit();
-        }
-    }
-
-    public void BattleMenu()
-    {
-        DrawBackground();
-        DrawBanner();
-
-        SavedDeck selected = SaveSystem.Profile.SelectedDeck;
-        CentredLabel(0.60f, selected != null
-            ? "Taking " + selected.deckName + " into battle (" + selected.CardCount
-              + " cards, " + selected.TotalMoraleCost + " morale)"
-            : "No deck selected — the default Celtic deck will be used.");
-
-        if (MenuButton(0, 2, "Load Battle"))
-        {
-            SceneManager.LoadScene("Battle");
-        }
-
-        if (MenuButton(1, 2, "Main Menu"))
-        {
-            this.currentGUIMethod = MainMenu;
-        }
-    }
-    #endregion
-
     //Deckbuilder
     #region
 
     // The "Cards" button has shown "Sorry N/A" since 2014. The 2014 project also had a
     // DeckData asset named "Custom", so this screen was always intended.
-    private void OpenDeckBuilder()
+    public void OpenDeckBuilder()
     {
         PlayerProfile profile = SaveSystem.Profile;
         editingDeck = profile.SelectedDeck;
@@ -208,6 +162,18 @@ public class UI : MonoBehaviour
         Revalidate();
         statusMessage = "";
         this.currentGUIMethod = DeckBuilder;
+    }
+
+    /// <summary>Stops drawing the deckbuilder and hands control back to the uGUI menus.</summary>
+    private void CloseDeckBuilder()
+    {
+        this.currentGUIMethod = null;
+
+        MenuUI menus = GetComponent<MenuUI>();
+        if (menus != null)
+        {
+            menus.ReturnToMenu();
+        }
     }
 
     private void Revalidate()
@@ -553,7 +519,7 @@ public class UI : MonoBehaviour
         if (GUI.Button(new Rect(margin + 152, y + 64, 140, 34), "Main Menu", actionStyle))
         {
             SaveSystem.Save();
-            this.currentGUIMethod = MainMenu;
+            CloseDeckBuilder();
         }
 
         footerStyle.normal.textColor = Palette.Muted;
