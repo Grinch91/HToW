@@ -2,11 +2,11 @@
 
 **Status: nothing exists.** `Level1.unity` is an empty scene containing a single camera and is not in Build Settings. There is no campaign code, no progression, no save system, and no map. This is the ~0%-complete part of the project.
 
-This document is a **proposal**, not a specification. It depends on open question **Q-02** in `Decisions.md` (linear campaigns vs. run-based structure), which is unresolved.
+> **Structure decided 2026-07-29: linear historical campaigns** (`Decisions.md` D-11). The goal is to teach Irish history, and authored order is the mechanism for that — a randomised run cannot guarantee a player meets the material in a coherent sequence. §1 below records the comparison that led there; §3 is superseded by §3a.
 
 ---
 
-## 1. The structural question
+## 1. The structural question *(resolved — kept for the reasoning)*
 
 | | Linear campaign (original vision) | Run-based (Hand of Fate style) |
 |---|---|---|
@@ -61,7 +61,34 @@ Gallowglass era (13th–16th c. — the correct home for `gallóglaigh`, which w
 
 ---
 
-## 3. Proposed run structure
+## 3a. Chosen structure — linear chapters
+
+A campaign is an ordered list of **chapters**. Each chapter is one authored encounter, and the player advances only by completing it.
+
+```mermaid
+flowchart LR
+    S[Start: faction starting deck] --> C1[Chapter 1: setting + battle]
+    C1 --> R1[Reward: new cards unlocked]
+    R1 --> D1[Deck editing between chapters]
+    D1 --> C2[Chapter 2]
+    C2 --> D2[...]
+    D2 --> F[Set-piece finale]
+    F --> E[Epilogue: what actually happened]
+```
+
+Encounter types, in rough order of authoring cost:
+- **Battle** — the existing combat system with a specified opponent deck, starting morale and any special rule.
+- **Briefing** — two or three sentences of scene-setting before a battle. Never blocking; skippable.
+- **Choice** — a historical decision with a mechanical consequence (hire Norse ships, give hostages, raid a monastery). Cheapest content to author, highest teaching value per hour of work.
+- **Epilogue** — what actually happened, shown after the chapter resolves. This is where a game can do what a textbook cannot: the player learns the outcome *after* having had a stake in it.
+
+Data shape: `CampaignData : ScriptableObject` holding an ordered `ChapterData[]`, each with its opponent `DeckData`, briefing and epilogue text, unlock rewards, and any rule overrides. Progress persists through the existing `SaveSystem`, which already handles profiles and decks.
+
+**Where replayability comes from**, now that it is no longer free: the three AI difficulty tiers built in Milestone 5, alternate starting decks, and optional side chapters. This has to be deliberate — see `Decisions.md` D-11.
+
+---
+
+## 3b. Superseded — run structure
 
 ```mermaid
 flowchart LR

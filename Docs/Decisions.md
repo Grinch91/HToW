@@ -131,14 +131,30 @@ Letting a dying defender still hit back is deliberate: otherwise "kill it first"
 
 ---
 
+## D-11 — Linear historical campaigns, because teaching is the goal
+**2026-07-29 · Accepted** *(answers Q-02)*
+
+**Decision:** campaigns are **linear, authored sequences of historical encounters**, not randomised runs. Milestone 7 builds a fixed chapter structure per period, starting with Celtic Ireland.
+
+**Why (the author's reasoning):** the point of the game is to teach Irish history. A linear campaign can present events in chronological order, build cause and effect across battles, and guarantee every player encounters the material in the intended sequence. A randomised run cannot promise any of that — a player might finish a Viking campaign without ever meeting a *longphort*.
+
+**My earlier recommendation was run-based**, on replayability grounds. That recommendation is superseded, and the reasoning above is sound: if education is the primary goal, authored order is not a limitation but the entire mechanism. Randomisation actively works against a teaching sequence.
+
+**Consequences — the tradeoff we are accepting, and how to cover it:**
+- **Replayability no longer comes for free.** It has to be designed in deliberately. Candidates: difficulty tiers (the AI already supports three), alternate starting decks per campaign, optional side encounters, and score/rating on completion.
+- **Deckbuilding must stay a between-battle activity**, since it no longer happens organically during a run. The Milestone 6 deckbuilder already fits this: the player edits a deck between chapters.
+- **Content cost per hour of play is higher.** Every encounter is authored, so scope discipline matters. `Campaigns.md` §5 already argues for one complete campaign over four unfinished ones — that advice now matters more, not less.
+- **Historical material becomes authored encounter text** rather than emergent choice nodes. The presentation rules in `HistoricalResearch.md` §5 become the governing constraint: never make the player read to progress, always make reading rewarding.
+
+---
+
 ## OPEN QUESTIONS — need your decision
 
 These change what gets built. They do not block Milestone 0, which is why the roadmap starts there.
 
 ### ~~Q-01 — Combat retaliation?~~ → **ANSWERED: yes** (2026-07-28). See D-09.
 
-### Q-02 — Linear campaigns or run-based structure? *(blocks Milestone 7)*
-The original vision is a linear historical campaign per period. A Hand of Fate–style branching run would give replayability for free, make deckbuilding happen during play, and turn historical events into choice nodes. **My recommendation: run-based**, but this trades away the ability to tell a specific story beat by beat. Genuinely your call — it depends whether replayability or storytelling matters more to you. See `GameDesign.md` §7.
+### ~~Q-02 — Linear campaigns or run-based structure?~~ → **ANSWERED: linear** (2026-07-29). See D-11.
 
 ### ~~Q-03 — Reinstate the four abilities?~~ → **ANSWERED: yes** (2026-07-28)
 See D-07 below.
