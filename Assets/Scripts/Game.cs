@@ -95,7 +95,6 @@ public class Game : MonoBehaviour
         new System.Collections.Generic.Queue<System.Action>();
     float actionTimer;
 
-    Sprite cardBack;
     bool matchStarted;
     float aiThinkTimer;
     bool aiHasActed;
@@ -113,7 +112,6 @@ public class Game : MonoBehaviour
         AITurn = transform.Find("MessageAITurn").gameObject;
         HideAllMessages();
 
-        cardBack = Resources.Load<Sprite>("back");
 
         playerDeck.Configure(ZoneKind.DrawPile, Side.Player);
         aiDeck.Configure(ZoneKind.DrawPile, Side.AI);
@@ -174,8 +172,16 @@ public class Game : MonoBehaviour
     {
         GameObject obj = new GameObject(stripName);
         obj.transform.SetParent(transform, false);
-        obj.transform.position = new Vector3(0f, y, 1.5f);
-        obj.transform.localScale = new Vector3(0.85f, 0.048f, 1f);
+
+        // In front of the board, not behind it. The first version sat at z +1.5, which
+        // is *further* from the camera than the background, so the strips rendered
+        // behind the table and were never visible.
+        obj.transform.position = new Vector3(0f, y, -0.5f);
+
+        // The plate sprite is 64px at 100 pixels-per-unit, so 0.64 world units. Scaling
+        // it by 0.85 made a strip two thirds of a unit wide rather than one spanning the
+        // board.
+        obj.transform.localScale = new Vector3(82f, 4.2f, 1f);
 
         SpriteRenderer renderer = obj.AddComponent<SpriteRenderer>();
         renderer.sprite = ProceduralArt.Plate(new Color(0.09f, 0.07f, 0.05f, 0.92f), edge);
@@ -394,8 +400,7 @@ public class Game : MonoBehaviour
         obj.AddComponent<SpriteRenderer>();
 
         CardView view = obj.AddComponent<CardView>();
-        Sprite face = faceDown ? cardBack : card.Data.Art;
-        view.Bind(card, this, face, faceDown);
+        view.Bind(card, this, faceDown);
 
         // Card names are no longer written into Unity tags. Tags were used as identity
         // for FindGameObjectWithTag-based destruction, which could delete the attacker's

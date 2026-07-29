@@ -157,18 +157,88 @@ public static class ProceduralArt
         const string key = "ready";
         if (cache.ContainsKey(key)) return cache[key];
 
-        const int w = CardWidth + 56;
-        const int h = CardHeight + 56;
+        const int w = CardWidth + 150;
+        const int h = CardHeight + 150;
         Color32[] pixels = Fill(w, h, new Color(0, 0, 0, 0));
 
+        // A solid inner band so the ring reads at a glance, then a soft falloff. The
+        // first version was 28px of pure gradient and was effectively invisible once the
+        // card was scaled down to board size.
         Color glow = Palette.Ready;
-        for (int band = 0; band < 22; band++)
+        for (int band = 0; band < 75; band++)
         {
-            glow.a = 1f - (band / 22f);
+            glow.a = band < 26 ? 1f : 1f - ((band - 26) / 49f);
             DrawOutline(pixels, w, h, band, band, w - band, h - band, 1, glow);
         }
 
         return Store(key, pixels, w, h);
+    }
+
+    /// <summary>
+    /// Crops a card illustration down to just its figure.
+    ///
+    /// The 2014 artwork is not portrait art — each file is a complete card design with
+    /// its own border, its own name banner and its own printed stats. Dropped inside the
+    /// new frame it reads as a card within a card, with every label duplicated.
+    ///
+    /// Cutting the outer sixth away leaves the figure, which is the only part the new
+    /// frame actually wants. Replacing these with real portraits later is a drop-in.
+    /// </summary>
+    public static Sprite Portrait(Sprite source)
+    {
+        if (source == null)
+        {
+            return null;
+        }
+
+        string key = "portrait:" + source.name;
+        if (cache.ContainsKey(key)) return cache[key];
+
+        Rect r = source.rect;
+
+        // Asymmetric because the source cards carry a name banner at the top and a
+        // deeper stat block at the foot.
+        float sideCut = r.width * 0.13f;
+        float topCut = r.height * 0.17f;
+        float footCut = r.height * 0.24f;
+
+        Rect crop = new Rect(
+            r.x + sideCut,
+            r.y + footCut,
+            r.width - (sideCut * 2f),
+            r.height - topCut - footCut);
+
+        Sprite cropped = Sprite.Create(
+            source.texture, crop, new Vector2(0.5f, 0.5f), source.pixelsPerUnit);
+        cropped.name = source.name + "-portrait";
+
+        cache[key] = cropped;
+        return cropped;
+    }
+
+    /// <summary>
+    /// A faction card back. The 2014 build used an ornate playing-card back, which reads
+    /// as a poker deck rather than anything Irish.
+    /// </summary>
+    public static Sprite CardBack(Faction faction)
+    {
+        string key = "back:" + faction;
+        if (cache.ContainsKey(key)) return cache[key];
+
+        Color trim = Palette.For(faction);
+        Color32[] pixels = Fill(CardWidth, CardHeight, Palette.BogOak);
+
+        DrawBorder(pixels, CardWidth, CardHeight, 0, 30, trim);
+        DrawOrnament(pixels, CardWidth, CardHeight, faction, trim);
+
+        // A single centred boss, so the back reads as an object rather than a pattern.
+        float cx = CardWidth / 2f;
+        float cy = CardHeight / 2f;
+        DrawDisc(pixels, CardWidth, cx, cy, 120f, trim);
+        DrawDisc(pixels, CardWidth, cx, cy, 96f, Palette.BogOak);
+        DrawDisc(pixels, CardWidth, cx, cy, 54f, Palette.Orpiment);
+
+        return Store(key, pixels, CardWidth, CardHeight);
     }
 
     /// <summary>A flat plate, used for HUD strips and backdrops.</summary>

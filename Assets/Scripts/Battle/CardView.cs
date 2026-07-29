@@ -40,28 +40,36 @@ public class CardView : MonoBehaviour
     /// <summary>The card this view shows. Null until <see cref="Bind"/> is called.</summary>
     public CardInstance Instance { get; private set; }
 
-    /// <summary>Attaches this view to a card. Face-down hides everything but the back.</summary>
-    public void Bind(CardInstance instance, Game owner, Sprite face, bool faceDown)
+    /// <summary>
+    /// Attaches this view to a card.
+    ///
+    /// The frame is the root renderer and the illustration is a child sitting inside its
+    /// window. The first version had that the other way round, which meant the source
+    /// artwork's own border, name banner and printed stats showed through — a card
+    /// drawn inside a card, with every label duplicated.
+    /// </summary>
+    public void Bind(CardInstance instance, Game owner, bool faceDown)
     {
         Instance = instance;
         game = owner;
         instance.View = this;
 
-        portrait = GetComponent<SpriteRenderer>();
-        portrait.sprite = face;
+        Faction faction = instance.Data.Faction;
+
+        frame = GetComponent<SpriteRenderer>();
+        frame.sprite = faceDown
+            ? ProceduralArt.CardBack(faction)
+            : ProceduralArt.CardFrame(faction);
+        frame.sortingOrder = 1;
 
         name = faceDown ? "Card (hidden)" : instance.Data.DisplayName;
 
         BoxCollider2D collider = GetComponent<BoxCollider2D>();
 
-        // Size the click target from the art rather than a magic number. It was a fixed
-        // 2.0 x 3.0 against card art 5.12 x 7.44 units wide, so only the middle of a
-        // card responded to clicks and the edges silently did nothing.
-        if (face != null)
-        {
-            collider.size = face.bounds.size;
-        }
-
+        // Size the click target from the frame rather than a magic number. It was a fixed
+        // 2.0 x 3.0 against a card 5.12 x 7.44 units wide, so only the middle of a card
+        // responded to clicks and the edges silently did nothing.
+        collider.size = frame.sprite.bounds.size;
         collider.enabled = !faceDown;
 
         if (!faceDown)
@@ -79,9 +87,9 @@ public class CardView : MonoBehaviour
             return;
         }
 
-        if (portrait != null)
+        if (frame != null)
         {
-            portrait.sprite = Instance.Data.Art;
+            frame.sprite = ProceduralArt.CardFrame(Instance.Data.Faction);
         }
 
         name = Instance.Data.DisplayName;
@@ -104,12 +112,15 @@ public class CardView : MonoBehaviour
         built = true;
 
         Faction faction = Instance.Data.Faction;
-        int baseOrder = portrait != null ? portrait.sortingOrder : 0;
+        const int baseOrder = 0;
 
-        readyRing = AddLayer("ReadyRing", ProceduralArt.ReadyRing(), Vector3.forward * 0.05f, baseOrder - 1);
+        readyRing = AddLayer("ReadyRing", ProceduralArt.ReadyRing(), new Vector3(0f, 0f, 0.2f), baseOrder - 2);
         readyRing.enabled = false;
 
-        frame = AddLayer("Frame", ProceduralArt.CardFrame(faction), new Vector3(0f, 0f, -0.05f), baseOrder + 1);
+        // Sits in the frame's window: the transparent region runs y 216..704 of a
+        // 744-tall texture, whose centre is 0.88 units above the card's own centre.
+        portrait = AddLayer("Portrait", ProceduralArt.Portrait(Instance.Data.Art),
+            new Vector3(0f, 0.88f, 0.1f), baseOrder);
 
         AddLayer("Cost", ProceduralArt.CostBadge(faction), CostAt, baseOrder + 2);
         AddLayer("Morale", ProceduralArt.MoraleBanner(), MoraleAt, baseOrder + 2);
@@ -136,7 +147,7 @@ public class CardView : MonoBehaviour
 
         SpriteRenderer renderer = obj.AddComponent<SpriteRenderer>();
         renderer.sprite = sprite;
-        renderer.sortingLayerID = portrait != null ? portrait.sortingLayerID : 0;
+        renderer.sortingLayerID = frame != null ? frame.sortingLayerID : 0;
         renderer.sortingOrder = order;
         return renderer;
     }
@@ -163,7 +174,7 @@ public class CardView : MonoBehaviour
         }
 
         MeshRenderer r = obj.GetComponent<MeshRenderer>();
-        r.sortingLayerID = portrait != null ? portrait.sortingLayerID : 0;
+        r.sortingLayerID = frame != null ? frame.sortingLayerID : 0;
         r.sortingOrder = order;
         return mesh;
     }
@@ -224,10 +235,12 @@ public class CardView : MonoBehaviour
 
         bool selected = colour != Color.white;
 
-        if (portrait != null)
+        if (portrait != null) portrait.color = colour;
+        if (frame != null)
         {
-            portrait.color = colour;
-            portrait.sortingOrder = selected ? 100 : 0;
+            frame.color = colour;
+            // Lift the whole card above its neighbours, not just the illustration.
+            frame.sortingOrder = selected ? 101 : 1;
         }
 
         transform.localScale = selected ? restingScale * 1.12f : restingScale;
