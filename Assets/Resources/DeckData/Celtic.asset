@@ -18,12 +18,12 @@ MonoBehaviour:
   - card: {fileID: 11400000, guid: 44431c45ce7e2ef4cb158a21710b2b93, type: 2}
     count: 4
   - card: {fileID: 11400000, guid: 6985f8facb3cbc14fbf1d02ecb142da9, type: 2}
-    count: 3
+    count: 4
   - card: {fileID: 11400000, guid: 963751ebdee656243b683ca54a8f0c8e, type: 2}
-    count: 6
+    count: 4
   - card: {fileID: 11400000, guid: de5579732efe3cf429d91c24aaa66dc3, type: 2}
     count: 3
   - card: {fileID: 11400000, guid: cf65a04aeca93d2428e1275bc660450a, type: 2}
-    count: 2
+    count: 3
   - card: {fileID: 11400000, guid: 8a66e16b1d4ab774db54b3875e310d80, type: 2}
     count: 2

@@ -16,14 +16,14 @@ MonoBehaviour:
   faction: 1
   entries:
   - card: {fileID: 11400000, guid: 8a259f4eb10003f4ca27e5be21bfebfa, type: 2}
-    count: 5
+    count: 4
   - card: {fileID: 11400000, guid: f9a98444a8019a944b1fc9ab933f93b0, type: 2}
-    count: 5
+    count: 4
   - card: {fileID: 11400000, guid: 2df4e2afc1eec5c4e8586fa47e9ea26f, type: 2}
     count: 4
   - card: {fileID: 11400000, guid: 6985f8facb3cbc14fbf1d02ecb142da9, type: 2}
-    count: 2
+    count: 3
   - card: {fileID: 11400000, guid: cf65a04aeca93d2428e1275bc660450a, type: 2}
-    count: 2
+    count: 3
   - card: {fileID: 11400000, guid: 8a66e16b1d4ab774db54b3875e310d80, type: 2}
     count: 2

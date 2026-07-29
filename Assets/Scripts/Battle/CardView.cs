@@ -39,8 +39,18 @@ public class CardView : MonoBehaviour
 
         name = faceDown ? "Card (hidden)" : instance.Data.DisplayName;
 
+        BoxCollider2D collider = GetComponent<BoxCollider2D>();
+
+        // Size the click target from the art rather than a magic number. It was a fixed
+        // 2.0 x 3.0 against card art 5.12 x 7.44 units wide, so only the middle of a
+        // card responded to clicks and the edges silently did nothing.
+        if (face != null)
+        {
+            collider.size = face.bounds.size;
+        }
+
         // Face-down cards are the opponent's hand and must not be clickable.
-        GetComponent<BoxCollider2D>().enabled = !faceDown;
+        collider.enabled = !faceDown;
 
         if (!faceDown)
         {

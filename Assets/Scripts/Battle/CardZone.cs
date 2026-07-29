@@ -27,8 +27,14 @@ public enum ZoneKind
 /// </summary>
 public class CardZone : MonoBehaviour
 {
-    [Tooltip("Horizontal gap between laid-out cards, in world units.")]
-    [SerializeField] private float spacing = 3.0f;
+    [Tooltip("Preferred horizontal gap between card centres, in world units. Card art is " +
+             "5.12 units wide before scaling, so this must exceed the scaled card width " +
+             "or cards will overlap.")]
+    [SerializeField] private float spacing = 3.2f;
+
+    [Tooltip("Widest the row may grow. Beyond this, cards fan closer together instead of " +
+             "marching off the edge of the screen.")]
+    [SerializeField] private float maxRowWidth = 42.0f;
 
     private readonly List<CardInstance> cards = new List<CardInstance>();
 
@@ -136,9 +142,24 @@ public class CardZone : MonoBehaviour
     /// </summary>
     public void LayOut()
     {
-        float startX = -((cards.Count - 1) * spacing) * 0.5f;
+        int count = cards.Count;
+        if (count == 0)
+        {
+            return;
+        }
 
-        for (int i = 0; i < cards.Count; i++)
+        // Compress rather than overflow. A hand that keeps growing would otherwise walk
+        // straight off the edge of the camera, which is exactly what the original
+        // hardcoded positions did.
+        float step = spacing;
+        if (count > 1 && (count - 1) * spacing > maxRowWidth)
+        {
+            step = maxRowWidth / (count - 1);
+        }
+
+        float startX = -((count - 1) * step) * 0.5f;
+
+        for (int i = 0; i < count; i++)
         {
             CardView view = cards[i].View;
             if (view == null)
@@ -146,7 +167,9 @@ public class CardZone : MonoBehaviour
                 continue;
             }
 
-            view.transform.position = transform.position + new Vector3(startX + (i * spacing), 0.0f, 0.0f);
+            // Later cards sit slightly in front, so overlapping art layers predictably.
+            view.transform.position = transform.position
+                                      + new Vector3(startX + (i * step), 0.0f, -0.01f * i);
         }
     }
 }

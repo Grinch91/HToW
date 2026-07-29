@@ -48,8 +48,9 @@ public class Game : MonoBehaviour
     public AiDifficulty aiDifficulty = AiDifficulty.Balanced;
 
     [Header("Card visuals")]
-    public Vector2 cardSize = new Vector2(2.0f, 3.0f);
-    public Vector3 cardScale = new Vector3(0.75f, 0.75f, 1.0f);
+    [Tooltip("Card art is 5.12 x 7.44 world units unscaled; 0.55 makes a card about " +
+             "2.8 x 4.1, which fits four rows inside the camera's 30-unit height.")]
+    public Vector3 cardScale = new Vector3(0.55f, 0.55f, 1.0f);
     public Color attackerHighlight = new Color(0.7f, 1.0f, 0.7f);
     public Color targetHighlight = new Color(1.0f, 0.7f, 0.7f);
     #endregion
@@ -141,9 +142,12 @@ public class Game : MonoBehaviour
 
     // The 2014 scene placed HUD *icons* (hp.png, supplyicon.png) as SpriteRenderers but
     // never added the numbers beside them — the HUD was half-built, not merely unwired.
-    // Attaching each label as a child of its icon reuses the placement that was already
-    // authored, and avoids editing the scene for something the UI pass will replace with
-    // TextMeshPro anyway.
+    //
+    // Labels are created at the *root* of the scene rather than parented to the icons.
+    // The icons hang off the General objects, which carry non-uniform scale
+    // (1.56, 1.32, 1); inheriting that scale, on top of a characterSize tuned for a
+    // small camera, produced text several world units tall that covered the board.
+    // Root-level objects have no inherited scale, so the size on screen is predictable.
     static TextMesh FindHudLabel(string objectName)
     {
         GameObject anchor = GameObject.Find(objectName);
@@ -153,22 +157,32 @@ public class Game : MonoBehaviour
             return null;
         }
 
-        TextMesh existing = anchor.GetComponentInChildren<TextMesh>();
-        if (existing != null)
+        // The 2014 scene left an empty TextMesh child under some icons. Hide them so
+        // they cannot render stale placeholder text beside the real label.
+        foreach (TextMesh legacy in anchor.GetComponentsInChildren<TextMesh>(true))
         {
-            return existing;
+            legacy.gameObject.SetActive(false);
         }
 
+        Vector3 iconPosition = anchor.transform.position;
+
+        // Icons sit near the left and right edges of the board, so the label goes on
+        // whichever side faces the middle.
+        bool onRight = iconPosition.x > 0.0f;
+        float offsetX = onRight ? -2.0f : 2.0f;
+
         GameObject labelObject = new GameObject(objectName + "Label");
-        labelObject.transform.SetParent(anchor.transform, false);
-        labelObject.transform.localPosition = new Vector3(1.4f, 0.0f, -0.1f);
-        labelObject.transform.localScale = Vector3.one;
+        labelObject.transform.position = new Vector3(
+            iconPosition.x + offsetX, iconPosition.y, iconPosition.z - 0.5f);
 
         TextMesh label = labelObject.AddComponent<TextMesh>();
-        label.anchor = TextAnchor.MiddleLeft;
-        label.alignment = TextAlignment.Left;
+        label.anchor = onRight ? TextAnchor.MiddleRight : TextAnchor.MiddleLeft;
+        label.alignment = onRight ? TextAlignment.Right : TextAlignment.Left;
         label.fontSize = 64;
-        label.characterSize = 0.5f;
+
+        // Camera is orthographic size 15, so the view is 30 world units tall. This gives
+        // roughly 0.8 units of cap height — legible without dominating the board.
+        label.characterSize = 0.12f;
         label.color = Color.white;
 
         SpriteRenderer icon = anchor.GetComponent<SpriteRenderer>();
@@ -176,7 +190,7 @@ public class Game : MonoBehaviour
         if (icon != null && renderer != null)
         {
             renderer.sortingLayerID = icon.sortingLayerID;
-            renderer.sortingOrder = icon.sortingOrder + 1;
+            renderer.sortingOrder = icon.sortingOrder + 10;
         }
 
         return label;
@@ -303,9 +317,8 @@ public class Game : MonoBehaviour
         obj.transform.SetParent(zone.transform, false);
         obj.transform.localScale = cardScale;
 
-        BoxCollider2D collider = obj.AddComponent<BoxCollider2D>();
-        collider.size = cardSize;
-
+        // The collider is sized from the sprite inside CardView.Bind.
+        obj.AddComponent<BoxCollider2D>();
         obj.AddComponent<SpriteRenderer>();
 
         CardView view = obj.AddComponent<CardView>();
