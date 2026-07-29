@@ -21,6 +21,11 @@ public class UI : MonoBehaviour
     public Texture btn;
     public Texture banner;
 
+    [Tooltip("Full-screen menu backdrop. The 2014 scene showed this through a GUITexture " +
+             "component, which Unity removed in 2018 — the upgrade stripped it silently, " +
+             "leaving the menus on the camera's flat blue clear colour.")]
+    public Texture background;
+
     private Vector2 collectionScroll;
     private Vector2 deckScroll;
     private SavedDeck editingDeck;
@@ -63,6 +68,8 @@ public class UI : MonoBehaviour
             ButtonHeight);
     }
 
+    private GUIStyle centredButtonStyle;
+
     private bool MenuButton(int index, int count, string label)
     {
         Rect slot = ButtonSlot(index, count);
@@ -72,10 +79,32 @@ public class UI : MonoBehaviour
             GUI.DrawTexture(slot, btn, ScaleMode.StretchToFill);
         }
 
+        // The authored style left-aligns its text, which reads as misaligned now that
+        // the button plate is centred and full width. Copy it once and centre the label.
+        if (centredButtonStyle == null)
+        {
+            centredButtonStyle = new GUIStyle(mystyle)
+            {
+                alignment = TextAnchor.MiddleCenter
+            };
+        }
+
         return GUI.Button(
             new Rect(slot.x + 16, slot.y + 8, slot.width - 32, slot.height - 16),
             label,
-            mystyle);
+            centredButtonStyle);
+    }
+
+    // Drawn before anything else, cropped to fill rather than stretched, so the artwork
+    // keeps its proportions at any window shape.
+    private void DrawBackground()
+    {
+        if (background == null)
+        {
+            return;
+        }
+
+        GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), background, ScaleMode.ScaleAndCrop);
     }
 
     // Scaled to fit rather than drawn at a fixed offset, so it never overlaps the
@@ -117,6 +146,7 @@ public class UI : MonoBehaviour
     #region
     public void MainMenu()
     {
+        DrawBackground();
         DrawBanner();
 
         if (MenuButton(0, 3, "Battle Mode"))
@@ -137,6 +167,7 @@ public class UI : MonoBehaviour
 
     public void BattleMenu()
     {
+        DrawBackground();
         DrawBanner();
 
         SavedDeck selected = SaveSystem.Profile.SelectedDeck;
@@ -191,6 +222,7 @@ public class UI : MonoBehaviour
         int listTop = 150;
         int listHeight = Screen.height - listTop - 140;
 
+        DrawBackground();
         GUI.Label(new Rect(margin, 20, Screen.width, 40), "Deck Builder");
 
         // Deck selection.

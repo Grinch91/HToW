@@ -138,12 +138,33 @@ public class CardView : MonoBehaviour
         RefreshStats();
     }
 
-    /// <summary>Tints the card to show it is the current attacker or target.</summary>
+    private Vector3 restingScale;
+    private bool scaleCaptured;
+
+    /// <summary>
+    /// Marks the card as the current attacker or target. Colour alone proved hard to
+    /// read against varied card art, so a selected card also lifts slightly and draws
+    /// in front of its neighbours.
+    /// </summary>
     public void SetHighlight(Color colour)
     {
         if (spriteRenderer != null)
         {
             spriteRenderer.color = colour;
+        }
+
+        if (!scaleCaptured)
+        {
+            restingScale = transform.localScale;
+            scaleCaptured = true;
+        }
+
+        bool selected = colour != Color.white;
+        transform.localScale = selected ? restingScale * 1.12f : restingScale;
+
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.sortingOrder = selected ? 100 : 0;
         }
     }
 
