@@ -37,26 +37,99 @@ public class UI : MonoBehaviour
         this.currentGUIMethod();
     }
 
+    //Layout helpers
+    #region
+
+    // The menu used to place its buttons at hardcoded y = 610 / 690 / 770, authored
+    // against a window roughly 900px tall. Below that, "Cards" was clipped and "Exit"
+    // was off-screen entirely, so at 720p the game looked like it had failed to start.
+    // Predicted in Docs/UnityUpgrade.md section 3.1 and confirmed on the first build.
+    //
+    // Everything is now derived from Screen.width/height, so the menu fits any window.
+    private const float ButtonWidth = 260f;
+    private const float ButtonHeight = 58f;
+    private const float ButtonGap = 22f;
+
+    private static Rect ButtonSlot(int index, int count)
+    {
+        float stackHeight = (count * ButtonHeight) + ((count - 1) * ButtonGap);
+        float bottomMargin = Mathf.Max(40f, Screen.height * 0.07f);
+        float top = Screen.height - stackHeight - bottomMargin;
+
+        return new Rect(
+            (Screen.width - ButtonWidth) * 0.5f,
+            top + (index * (ButtonHeight + ButtonGap)),
+            ButtonWidth,
+            ButtonHeight);
+    }
+
+    private bool MenuButton(int index, int count, string label)
+    {
+        Rect slot = ButtonSlot(index, count);
+
+        if (btn != null)
+        {
+            GUI.DrawTexture(slot, btn, ScaleMode.StretchToFill);
+        }
+
+        return GUI.Button(
+            new Rect(slot.x + 16, slot.y + 8, slot.width - 32, slot.height - 16),
+            label,
+            mystyle);
+    }
+
+    // Scaled to fit rather than drawn at a fixed offset, so it never overlaps the
+    // buttons or spills off a narrow window.
+    private void DrawBanner()
+    {
+        if (banner == null)
+        {
+            return;
+        }
+
+        float maxWidth = Screen.width * 0.72f;
+        float maxHeight = Screen.height * 0.48f;
+
+        float aspect = (float)banner.width / banner.height;
+        float width = maxWidth;
+        float height = width / aspect;
+
+        if (height > maxHeight)
+        {
+            height = maxHeight;
+            width = height * aspect;
+        }
+
+        GUI.DrawTexture(
+            new Rect((Screen.width - width) * 0.5f, Screen.height * 0.05f, width, height),
+            banner,
+            ScaleMode.ScaleToFit);
+    }
+
+    private static void CentredLabel(float normalisedY, string text)
+    {
+        GUI.Label(new Rect(Screen.width * 0.5f - 300f, Screen.height * normalisedY, 600f, 30f),
+            text, new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter });
+    }
+    #endregion
+
     //Main menu
     #region
     public void MainMenu()
     {
-        GUI.Label(new Rect((Screen.width / 4), -60, Screen.width, Screen.height), banner, mystyle);
+        DrawBanner();
 
-        GUI.Label(new Rect((Screen.width / 2 - 130), 600, 250, 58), btn, mystyle);
-        if (GUI.Button(new Rect((Screen.width / 2 - 100), 610, 100, 40), "Battle Mode", mystyle))
+        if (MenuButton(0, 3, "Battle Mode"))
         {
             this.currentGUIMethod = BattleMenu;
         }
 
-        GUI.Label(new Rect((Screen.width / 2 - 130), 680, 250, 58), btn, mystyle);
-        if (GUI.Button(new Rect((Screen.width / 2 - 100), 690, 100, 40), "Cards", mystyle))
+        if (MenuButton(1, 3, "Cards"))
         {
             OpenDeckBuilder();
         }
 
-        GUI.Label(new Rect((Screen.width / 2 - 130), 760, 250, 58), btn, mystyle);
-        if (GUI.Button(new Rect((Screen.width / 2 - 100), 770, 100, 40), "Exit", mystyle))
+        if (MenuButton(2, 3, "Exit"))
         {
             Application.Quit();
         }
@@ -64,22 +137,20 @@ public class UI : MonoBehaviour
 
     public void BattleMenu()
     {
-        GUI.Label(new Rect((Screen.width / 4), -60, Screen.width, Screen.height), banner, mystyle);
+        DrawBanner();
 
         SavedDeck selected = SaveSystem.Profile.SelectedDeck;
-        GUI.Label(new Rect((Screen.width / 2 - 200), 550, 400, 30),
-            selected != null
-                ? "Taking " + selected.deckName + " into battle (" + selected.CardCount + " cards)"
-                : "No deck selected — the default Celtic deck will be used.");
+        CentredLabel(0.60f, selected != null
+            ? "Taking " + selected.deckName + " into battle (" + selected.CardCount
+              + " cards, " + selected.TotalMoraleCost + " morale)"
+            : "No deck selected — the default Celtic deck will be used.");
 
-        GUI.Label(new Rect((Screen.width / 2 - 130), 600, 250, 58), btn, mystyle);
-        if (GUI.Button(new Rect((Screen.width / 2 - 100), 610, 100, 40), "Load Battle", mystyle))
+        if (MenuButton(0, 2, "Load Battle"))
         {
             SceneManager.LoadScene("Battle");
         }
 
-        GUI.Label(new Rect((Screen.width / 2 - 130), 680, 250, 58), btn, mystyle);
-        if (GUI.Button(new Rect((Screen.width / 2 - 100), 690, 100, 40), "Main Menu", mystyle))
+        if (MenuButton(1, 2, "Main Menu"))
         {
             this.currentGUIMethod = MainMenu;
         }
