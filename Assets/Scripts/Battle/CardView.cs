@@ -175,4 +175,188 @@ public class CardView : MonoBehaviour
             game.OnCardClicked(this);
         }
     }
+
+    //Combat feedback
+    #region
+
+    // Cards used to appear and vanish with no acknowledgement at all: an attack was a
+    // silent number change and a death was a card blinking out of existence. Nothing
+    // told the player that anything had happened, let alone what.
+
+    /// <summary>Lunges toward a point and back. Purely cosmetic.</summary>
+    public void PlayAttack(Vector3 worldTarget)
+    {
+        if (isActiveAndEnabled)
+        {
+            StartCoroutine(AttackRoutine(worldTarget));
+        }
+    }
+
+    private System.Collections.IEnumerator AttackRoutine(Vector3 worldTarget)
+    {
+        Vector3 start = transform.position;
+        Vector3 forward = Vector3.MoveTowards(start, worldTarget, 1.6f);
+        forward.z = start.z;
+
+        const float outDuration = 0.12f;
+        const float backDuration = 0.16f;
+
+        for (float t = 0f; t < outDuration; t += Time.deltaTime)
+        {
+            transform.position = Vector3.Lerp(start, forward, t / outDuration);
+            yield return null;
+        }
+
+        for (float t = 0f; t < backDuration; t += Time.deltaTime)
+        {
+            transform.position = Vector3.Lerp(forward, start, t / backDuration);
+            yield return null;
+        }
+
+        transform.position = start;
+    }
+
+    /// <summary>Flashes red and floats the damage figure upward.</summary>
+    public void PlayHit(int damage)
+    {
+        RefreshStats();
+
+        if (isActiveAndEnabled)
+        {
+            StartCoroutine(HitRoutine());
+            SpawnFloatingNumber("-" + damage, new Color(1f, 0.35f, 0.30f));
+        }
+    }
+
+    private System.Collections.IEnumerator HitRoutine()
+    {
+        if (spriteRenderer == null)
+        {
+            yield break;
+        }
+
+        Color original = spriteRenderer.color;
+
+        for (int flash = 0; flash < 2; flash++)
+        {
+            spriteRenderer.color = new Color(1f, 0.4f, 0.4f);
+            yield return new WaitForSeconds(0.06f);
+            spriteRenderer.color = original;
+            yield return new WaitForSeconds(0.05f);
+        }
+    }
+
+    /// <summary>
+    /// Fades and shrinks the card away, then destroys it. The caller has already removed
+    /// the model from its zone, so this object is purely a leftover visual.
+    /// </summary>
+    public void PlayDeathThenDestroy()
+    {
+        // Stop responding to clicks the moment it is dying.
+        BoxCollider2D collider = GetComponent<BoxCollider2D>();
+        if (collider != null)
+        {
+            collider.enabled = false;
+        }
+
+        if (isActiveAndEnabled)
+        {
+            StartCoroutine(DeathRoutine());
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
+
+    private System.Collections.IEnumerator DeathRoutine()
+    {
+        Vector3 startScale = transform.localScale;
+        Color startColour = spriteRenderer != null ? spriteRenderer.color : Color.white;
+
+        const float duration = 0.45f;
+
+        for (float t = 0f; t < duration; t += Time.deltaTime)
+        {
+            float k = t / duration;
+
+            transform.localScale = Vector3.Lerp(startScale, startScale * 0.55f, k);
+            transform.Rotate(0f, 0f, 220f * Time.deltaTime);
+
+            if (spriteRenderer != null)
+            {
+                Color fading = Color.Lerp(startColour, new Color(0.4f, 0.1f, 0.1f, 0f), k);
+                spriteRenderer.color = fading;
+            }
+
+            yield return null;
+        }
+
+        Destroy(gameObject);
+    }
+
+    /// <summary>
+    /// Dims a card that has already attacked this turn, so it is obvious at a glance
+    /// which units still have an action available.
+    /// </summary>
+    public void SetSpent(bool spent)
+    {
+        if (spriteRenderer == null || Instance == null)
+        {
+            return;
+        }
+
+        spriteRenderer.color = spent ? new Color(0.55f, 0.55f, 0.60f) : Color.white;
+    }
+
+    private void SpawnFloatingNumber(string text, Color colour)
+    {
+        GameObject obj = new GameObject("Damage");
+        obj.transform.position = transform.position + new Vector3(0f, 1.0f, -1f);
+
+        TextMesh mesh = obj.AddComponent<TextMesh>();
+        mesh.text = text;
+        mesh.color = colour;
+        mesh.fontSize = 90;
+        mesh.characterSize = 0.14f;
+        mesh.anchor = TextAnchor.MiddleCenter;
+
+        MeshRenderer renderer = obj.GetComponent<MeshRenderer>();
+        if (renderer != null && spriteRenderer != null)
+        {
+            renderer.sortingLayerID = spriteRenderer.sortingLayerID;
+            renderer.sortingOrder = 200;
+        }
+
+        FloatingNumber floater = obj.AddComponent<FloatingNumber>();
+        floater.Begin(mesh);
+    }
+    #endregion
+}
+
+/// <summary>Drifts a damage figure upward, fades it, then removes itself.</summary>
+public class FloatingNumber : MonoBehaviour
+{
+    private TextMesh mesh;
+
+    public void Begin(TextMesh target)
+    {
+        mesh = target;
+        StartCoroutine(Run());
+    }
+
+    private System.Collections.IEnumerator Run()
+    {
+        const float duration = 0.9f;
+        Color start = mesh.color;
+
+        for (float t = 0f; t < duration; t += Time.deltaTime)
+        {
+            transform.position += new Vector3(0f, 1.6f * Time.deltaTime, 0f);
+            mesh.color = new Color(start.r, start.g, start.b, 1f - (t / duration));
+            yield return null;
+        }
+
+        Destroy(gameObject);
+    }
 }

@@ -200,6 +200,39 @@ That directly undermines the faction identity proposed in `GameDesign.md` §5, w
 
 ---
 
+## D-15 — Units may strike the enemy commander when no defenders remain
+**2026-07-29 · Accepted**
+
+**Decision:** if a side has no units in play, the opposing units may attack that side's **commander** directly, removing morale equal to the attacker's damage. Commanders do not retaliate. The General objects — art placed in 2014 with no code ever written for them — are the target.
+
+**Why:** a cleared board was a dead end. Neither side could make progress, so a match could only resolve if someone chose to trade into a defended board. This gives the game a second, more aggressive win condition and rewards clearing the board rather than merely surviving.
+
+**Measured effect** (4,000 matches): draws collapsed from ~2–5% to **0.2%**, confirming that the dead end was real and common. Match length shortened from ~14.5 to ~9.7 turns, because there are now two ways to drain morale.
+
+**Consequences and the rebalance it forced:** direct damage rewards fast, high-damage decks, and Celtic jumped to 69%. Two further changes brought it back to **54.5% / 45.3%** with mirrors at 50.1%:
+
+| Change | Reason |
+|---|---|
+| Bondi 4 → 3 supply | Viking's underperformer (k/d 0.84); Viking needed earlier board presence |
+| Fianna 12 → 10 damage | k/d 2.17 — the best commander-rusher in the game |
+
+Fianna and Huscarl remain distinct: 10 damage at 5 supply against 15 at 6.
+
+**Note:** the `Cautious` tier now wins far less (87% player win rate against it) because refusing risky trades also means refusing to clear the board. The difficulty tiers separate much more sharply than before, which is arguably an improvement.
+
+---
+
+## D-16 — Combat is paced and acknowledged
+**2026-07-29 · Accepted**
+
+**Decision:** attacks are queued and played out one at a time, with attack lunges, hit flashes, floating damage figures and a death animation. Cards that have already attacked are dimmed.
+
+**Why:** an entire AI turn resolved between two frames, and a destroyed card simply vanished. The player was given no signal that anything had happened, what had happened, or which of their own units still had an action available. Speed was not the problem — silence was.
+
+**Implementation note:** the queue lives in `Game.Update` and blocks turn advancement while non-empty, rather than being threaded through `TurnController`. That keeps the turn state machine free of presentation concerns, and player input is refused while the queue drains so clicks cannot land mid-animation on a board that is already changing.
+
+---
+
 ## OPEN QUESTIONS — need your decision
 
 These change what gets built. They do not block Milestone 0, which is why the roadmap starts there.

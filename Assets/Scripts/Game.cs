@@ -42,7 +42,11 @@ public class Game : MonoBehaviour
     #region
     [Header("Pacing")]
     [Tooltip("Seconds the AI pauses before acting, so the player can follow what it does.")]
-    public float aiThinkSeconds = 1.5f;
+    public float aiThinkSeconds = 1.2f;
+
+    [Tooltip("Seconds between individual queued attacks, so a turn plays out visibly " +
+             "rather than resolving between two frames.")]
+    public float actionSpacingSeconds = 0.7f;
 
     [Tooltip("How hard the opponent plays. All tiers obey identical rules; only their appetite for risk differs.")]
     public AiDifficulty aiDifficulty = AiDifficulty.Balanced;
@@ -81,9 +85,20 @@ public class Game : MonoBehaviour
     TextMesh playerSupplyText;
     TextMesh enemySupplyText;
 
+    CommanderView playerCommander;
+    CommanderView aiCommander;
+
+    // Combat used to resolve instantly and silently — a whole AI turn happened between
+    // two frames. Attacks are queued and played out one at a time so the player can see
+    // what is happening, and the turn cannot end until the queue has drained.
+    readonly System.Collections.Generic.Queue<System.Action> pendingActions =
+        new System.Collections.Generic.Queue<System.Action>();
+    float actionTimer;
+
     Sprite cardBack;
     bool matchStarted;
     float aiThinkTimer;
+    bool aiHasActed;
     bool awaitingDismissal;
     #endregion
 
@@ -113,6 +128,7 @@ public class Game : MonoBehaviour
         aiDiscard = CreateDiscardZone("Discard-Enemy", Side.AI);
 
         BindHud();
+        BindCommanders();
 
         turns.TurnStarted += OnTurnStarted;
         turns.TurnEnded += OnTurnEnded;
@@ -130,6 +146,28 @@ public class Game : MonoBehaviour
         CardZone zone = obj.AddComponent<CardZone>();
         zone.Configure(ZoneKind.DrawPile, owner);
         return zone;
+    }
+
+    // The General objects have carried artwork and no code since 2014. They now serve as
+    // the direct-damage target when a side has no defenders left.
+    void BindCommanders()
+    {
+        playerCommander = AttachCommander("General-Player", Side.Player);
+        aiCommander = AttachCommander("General-Enemy", Side.AI);
+    }
+
+    CommanderView AttachCommander(string objectName, Side owner)
+    {
+        GameObject obj = GameObject.Find(objectName);
+        if (obj == null)
+        {
+            Debug.LogWarning("Commander object '" + objectName + "' not found in scene.");
+            return null;
+        }
+
+        CommanderView view = obj.AddComponent<CommanderView>();
+        view.Bind(owner, this);
+        return view;
     }
 
     void BindHud()
@@ -346,10 +384,22 @@ public class Game : MonoBehaviour
         // Unity's overloaded == and would happily call into a destroyed object.
         foreach (CardInstance card in playerActive.Cards)
         {
-            if (card.View != null)
+            if (card.View == null)
             {
-                card.View.SetHighlight(
-                    ReferenceEquals(card, selection.Attacker) ? attackerHighlight : Color.white);
+                continue;
+            }
+
+            if (ReferenceEquals(card, selection.Attacker))
+            {
+                card.View.SetHighlight(attackerHighlight);
+            }
+            else
+            {
+                card.View.SetHighlight(Color.white);
+
+                // A unit that has already swung is dimmed, so it is obvious at a glance
+                // which of your cards still have an action available.
+                card.View.SetSpent(card.HasAttacked);
             }
         }
 
@@ -360,6 +410,16 @@ public class Game : MonoBehaviour
                 card.View.SetHighlight(
                     ReferenceEquals(card, selection.Target) ? targetHighlight : Color.white);
             }
+        }
+
+        // Light the enemy commander when it is actually reachable.
+        if (aiCommander != null)
+        {
+            aiCommander.SetTargetable(
+                turns.ActiveSide == Side.Player
+                && CanAttackCommander(Side.Player)
+                && selection.Attacker != null
+                && !selection.Attacker.HasAttacked);
         }
     }
     #endregion
@@ -450,7 +510,7 @@ public class Game : MonoBehaviour
     {
         CardInstance card = view.Instance;
 
-        if (turns.ActiveSide != Side.Player || turns.Phase != TurnPhase.Main)
+        if (!PlayerMayAct())
         {
             return;
         }
@@ -471,6 +531,49 @@ public class Game : MonoBehaviour
                 ResolveSelectedAttack();
             }
         }
+    }
+
+    /// <summary>Clicking the enemy commander sends the selected attacker at it.</summary>
+    public void OnCommanderClicked(CommanderView commander)
+    {
+        if (!PlayerMayAct() || commander.Owner != Side.AI)
+        {
+            return;
+        }
+
+        CardInstance attacker = selection.Attacker;
+
+        if (attacker == null)
+        {
+            Debug.Log("Choose one of your units first");
+            return;
+        }
+
+        if (!CanAttackCommander(Side.Player))
+        {
+            Debug.Log("The enemy commander is shielded while they still have units in play");
+            return;
+        }
+
+        if (attacker.HasAttacked)
+        {
+            Debug.Log(attacker.Data.DisplayName + " has already attacked this turn");
+            return;
+        }
+
+        AttackCommander(attacker, Side.AI);
+        selection.Clear();
+        RefreshHighlights();
+    }
+
+    // The player may only act on their own turn, and not while queued attacks are still
+    // playing out — otherwise clicks would land mid-animation on a board that is
+    // already changing.
+    bool PlayerMayAct()
+    {
+        return turns.ActiveSide == Side.Player
+               && turns.Phase == TurnPhase.Main
+               && pendingActions.Count == 0;
     }
     #endregion
 
@@ -542,17 +645,13 @@ public class Game : MonoBehaviour
         RefreshHighlights();
         UpdateHud();
         aiThinkTimer = 0.0f;
+        aiHasActed = false;
     }
 
     void OnTurnEnded(Side side)
     {
-        // The player attacks by choosing cards during their turn; only the AI needs its
-        // attacks resolved automatically here.
-        if (side == Side.AI)
-        {
-            ResolveAiAttacks();
-        }
-
+        // The AI's attacks are queued during its main phase and have already played out
+        // by the time the turn ends, so there is nothing to resolve here.
         selection.Clear();
         RefreshHighlights();
         CheckForWinner();
@@ -591,9 +690,20 @@ public class Game : MonoBehaviour
                       ? " and takes " + result.DamageToAttacker + " back"
                       : " without retaliation (Volley)"));
 
-        // Refresh both cards' printed health before anything is destroyed.
-        if (attacker.View != null) attacker.View.RefreshStats();
-        if (target.View != null) target.View.RefreshStats();
+        if (attacker.View != null && target.View != null)
+        {
+            attacker.View.PlayAttack(target.View.transform.position);
+        }
+
+        if (target.View != null)
+        {
+            target.View.PlayHit(result.DamageToTarget);
+        }
+
+        if (result.DamageToAttacker > 0 && attacker.View != null)
+        {
+            attacker.View.PlayHit(result.DamageToAttacker);
+        }
 
         if (result.TargetDestroyed)
         {
@@ -606,6 +716,48 @@ public class Game : MonoBehaviour
         }
 
         UpdateHud();
+    }
+
+    /// <summary>
+    /// Strikes at the opposing commander, taking morale off directly. Only legal while
+    /// that side has no units left to defend.
+    ///
+    /// Without this, a cleared board was a dead end: neither side could make progress
+    /// and the match could only resolve if someone chose to trade into a defended board.
+    /// </summary>
+    void AttackCommander(CardInstance attacker, Side defendingSide)
+    {
+        int damage = attacker.Data.Damage;
+
+        if (defendingSide == Side.Player)
+        {
+            playerInstance.playerMorale -= damage;
+        }
+        else
+        {
+            enemyInstance.enemyMorale -= damage;
+        }
+
+        CommanderView commander = defendingSide == Side.Player ? playerCommander : aiCommander;
+
+        Debug.Log(attacker.Data.DisplayName + " strikes the " + defendingSide
+                  + " commander for " + damage + " morale");
+
+        if (attacker.View != null && commander != null)
+        {
+            attacker.View.PlayAttack(commander.transform.position);
+        }
+
+        attacker.HasAttacked = true;
+        UpdateHud();
+        RefreshHighlights();
+        CheckForWinner();
+    }
+
+    /// <summary>True when <paramref name="side"/> may strike the opposing commander.</summary>
+    bool CanAttackCommander(Side side)
+    {
+        return (side == Side.Player ? aiActive.Count : playerActive.Count) == 0;
     }
 
     void Destroy(CardInstance card)
@@ -634,7 +786,15 @@ public class Game : MonoBehaviour
         discard.Add(card);
 
         selection.Forget(card);
-        DestroyView(card);
+
+        // Hand the view over to its own death animation rather than deleting it outright.
+        // The model has already left the board, so this object is only a visual.
+        if (card.View != null)
+        {
+            card.View.PlayDeathThenDestroy();
+            card.View = null;
+        }
+
         board.LayOut();
         UpdateHud();
 
@@ -694,23 +854,39 @@ public class Game : MonoBehaviour
         }
     }
 
-    void ResolveAiAttacks()
+    // Queued rather than resolved on the spot, so an AI turn plays out one visible
+    // attack at a time instead of happening entirely between two frames.
+    void QueueAiAttacks()
     {
         foreach (CardInstance attacker in aiActive.Snapshot())
         {
-            if (attacker.HasAttacked || playerActive.Count == 0)
-            {
-                continue;
-            }
+            CardInstance queuedAttacker = attacker;
 
-            CardInstance target = ChooseAiTarget(attacker);
-            if (target == null)
+            pendingActions.Enqueue(() =>
             {
-                continue;
-            }
+                // Re-checked at the moment it runs: an earlier attack in the queue may
+                // have killed this unit, or cleared the last defender.
+                if (queuedAttacker.HasAttacked || !queuedAttacker.IsAlive
+                    || !aiActive.Contains(queuedAttacker))
+                {
+                    return;
+                }
 
-            Attack(attacker, target);
-            attacker.HasAttacked = true;
+                if (playerActive.Count == 0)
+                {
+                    AttackCommander(queuedAttacker, Side.Player);
+                    return;
+                }
+
+                CardInstance target = ChooseAiTarget(queuedAttacker);
+                if (target == null)
+                {
+                    return;
+                }
+
+                Attack(queuedAttacker, target);
+                queuedAttacker.HasAttacked = true;
+            });
         }
     }
 
@@ -766,12 +942,35 @@ public class Game : MonoBehaviour
             return;
         }
 
+        // Queued attacks play out one at a time. Nothing else advances until the queue is
+        // empty, which is what stops a whole turn resolving between two frames.
+        if (pendingActions.Count > 0)
+        {
+            actionTimer += Time.deltaTime;
+            if (actionTimer >= actionSpacingSeconds)
+            {
+                actionTimer = 0.0f;
+                pendingActions.Dequeue().Invoke();
+                RefreshHighlights();
+            }
+            return;
+        }
+
         if (turns.ActiveSide == Side.AI && turns.Phase == TurnPhase.Main)
         {
             aiThinkTimer += Time.deltaTime;
-            if (aiThinkTimer >= aiThinkSeconds)
+
+            if (!aiHasActed && aiThinkTimer >= aiThinkSeconds)
             {
                 RunAiTurn();
+                QueueAiAttacks();
+                aiHasActed = true;
+                actionTimer = 0.0f;
+                return;    // let the queue drain before ending the turn
+            }
+
+            if (aiHasActed)
+            {
                 turns.RequestEndTurn();
             }
         }

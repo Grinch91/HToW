@@ -162,8 +162,24 @@ public class MatchSimulator
             // Attack phase.
             foreach (CardInstance attacker in new List<CardInstance>(active.Board))
             {
-                if (attacker.HasAttacked || !attacker.IsAlive || waiting.Board.Count == 0)
+                if (attacker.HasAttacked || !attacker.IsAlive)
                 {
+                    continue;
+                }
+
+                // With no defenders left, units strike the commander directly. This is
+                // the game's second win condition and it has to be modelled here, or the
+                // balance figures describe a game nobody is playing.
+                if (waiting.Board.Count == 0)
+                {
+                    waiting.Morale -= attacker.Data.Damage;
+                    attacker.HasAttacked = true;
+
+                    if (waiting.Morale <= 0)
+                    {
+                        break;
+                    }
+
                     continue;
                 }
 
